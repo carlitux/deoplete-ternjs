@@ -79,7 +79,7 @@ class Source(Base):
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
-                                     shell=windows)
+                                     shell=True)
         output = ""
 
         while True:
