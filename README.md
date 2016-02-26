@@ -1,6 +1,7 @@
-# deoplete-jedi
-[deoplete.nvim](https://github.com/Shougo/deoplete.nvim) source for [jedi](https://github.com/davidhalter/jedi).
+# deoplete-ternjs
+[deoplete.nvim](https://github.com/Shougo/deoplete.nvim) source for javascript.
 
+Based on tern_for_vim and deoplete-jedi
 
 ## Required
 
