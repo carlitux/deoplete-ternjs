@@ -97,6 +97,7 @@ class Source(Base):
                 output += line
 
     def stop_server(self):
+        self.debug('Calling strop server')
         if self.proc is None:
             return
 
