@@ -23,3 +23,10 @@ NeoBundle 'carlitux/deoplete-ternjs'
 # or
 Plug 'carlitux/deoplete-ternjs'
 ```
+
+Also if you are using add loadEagerly this to your .bashrc or .zshrc, this will
+allow you load all files you need when ternjs is started.
+
+```bash
+ulimit -n 2048
+```
