@@ -4,10 +4,6 @@
 set runtimepath+=$XDG_CONFIG_HOME/nvim/bundle/deoplete.nvim
 set runtimepath+=$XDG_CONFIG_HOME/nvim/bundle/deoplete-ternjs
 
-" vim-plug
-set runtimepath+=$XDG_CONFIG_HOME/nvim/plugged/deoplete.nvim
-set runtimepath+=$XDG_CONFIG_HOME/nvim/plugged/deoplete-ternjs
-set completeopt+=noinsert,noselect
 set completeopt-=preview
 
 hi Pmenu    gui=NONE    guifg=#c5c8c6 guibg=#373b41
