@@ -56,6 +56,7 @@ class Source(Base):
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
         self._tern_arguments = ''
+        self._tern_buffer_sent_at = None
 
     def __del__(self):
         self.stop_server()
@@ -155,18 +156,20 @@ class Source(Base):
         if isinstance(query, str):
             query = {"type": query}
 
-        # current_seq = self.vim.eval("undotree()['seq_cur']")
+        current_seq = self.vim.eval("undotree()['seq_cur']")
 
         doc = {"query": query, "files": []}
 
-        if len(self.vim.current.buffer) > 250 and fragments:
+        if current_seq == self._tern_buffer_sent_at:
+            fname, sending_file = self.relative_file(), False
+        elif len(self.vim.current.buffer) > 250 and fragments:
             f = self.buffer_fragment()
             doc["files"].append(f)
             pos = {"line": pos["line"] - f["offsetLines"], "ch": pos["ch"]}
-            fname = "#0"
+            fname, sending_file = "#0", False
         else:
             doc["files"].append(self.full_buffer())
-            fname = "#0"
+            fname, sending_file = "#0", True
 
         query["file"] = fname
         query["end"] = pos
@@ -193,6 +196,9 @@ class Source(Base):
             except Exception as e:
                 if not silent:
                     raise e
+
+        if sending_file:
+            self._tern_buffer_sent_at = current_seq
 
         return data
 
