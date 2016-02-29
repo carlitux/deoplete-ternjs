@@ -1,7 +1,8 @@
 {
   "libs": [
     "ecma5",
-    "ecma6"
+    "ecma6",
+    "browser"
   ],
   "loadEagerly": [
   ],

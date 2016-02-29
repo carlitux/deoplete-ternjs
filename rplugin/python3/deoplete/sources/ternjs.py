@@ -276,7 +276,7 @@ class Source(Base):
         cached = cached and current_line[0:int(self.cached["end"])] == self.cached["word"]
         cached = cached and not re.match(".*\\W", current_line[int(self.cached["end"]):current_col])
 
-        if cached:
+        if cached and self.cached['data']:
             return self.cached['data']
 
         command = {
