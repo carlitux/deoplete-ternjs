@@ -1,3 +1,5 @@
+# pylint: disable=E0401,C0111,R0903
+
 import os
 import re
 import json
@@ -275,7 +277,7 @@ class Source(Base):
         cached = cached and not re.match(".*\\W", current_line[int(self.cached["end"]):current_col])
 
         if cached:
-                return
+            return self.cached['data']
 
         command = {
             "type": "completions",
@@ -284,24 +286,23 @@ class Source(Base):
         }
 
         data = self.run_command(command, pos)
-        self.debug(data)
-
-        if data is None:
-            return
-
         completions = []
-        for rec in data["completions"]:
-            completions.append({"word": rec["name"],
-                                "menu": self.completion_icon(rec.get("type")),
-                                "info": self.type_doc(rec)})
 
-        start, end = (data["start"]["ch"], data["end"]["ch"])
-        self.cached = {
-            "row": current_row,
-            "start": start,
-            "end": end,
-            "word": current_line[0:end]
-        }
+        if data is not None:
+
+            for rec in data["completions"]:
+                completions.append({"word": rec["name"],
+                                    "menu": self.completion_icon(rec.get("type")),
+                                    "info": self.type_doc(rec)})
+
+            start, end = (data["start"]["ch"], data["end"]["ch"])
+            self.cached = {
+                "row": current_row,
+                "start": start,
+                "end": end,
+                "word": current_line[0:end],
+                "data": completions
+            }
 
         return completions
 
@@ -313,12 +314,9 @@ class Source(Base):
         return result
 
     def gather_candidates(self, context):
-        line = self.vim.eval("line('.')")
-        col = context['complete_position']
-        # buf = self.vim.current.buffer
-        # source = '\n'.join(buf[:])
-        # cline = self.vim.current.line
-
+        line, col = context['position'][1:3]
         pos = {"line": line - 1, "ch": col}
-
-        return self.completation(pos)
+        result = self.completation(pos)
+        self.debug('*' * 100)
+        self.debug(result)
+        return result

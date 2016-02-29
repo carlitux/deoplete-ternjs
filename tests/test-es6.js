@@ -207,3 +207,4 @@ stack.push('world');
 stack.push('hello');
 ChromeSamples.log(stack.top());
 ChromeSamples.log(stack.length);
+document
