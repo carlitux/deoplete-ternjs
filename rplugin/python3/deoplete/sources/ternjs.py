@@ -59,6 +59,8 @@ class Source(Base):
         self._tern_command = 'tern'
         self._tern_arguments = ''
         self._tern_buffer_sent_at = None
+        # Used to avoid try to start server if not file found
+        self._not_tern_project_file_found = False
 
     def __del__(self):
         self.stop_server()
@@ -109,7 +111,7 @@ class Source(Base):
         self.proc = None
 
     def _search_tern_project_dir(self):
-        if not self._project_directory:
+        if not self._project_directory and not self._not_tern_project_file_found:
             directory = self.vim.eval("expand('%:p:h')")
 
             if PY2:
@@ -124,6 +126,7 @@ class Source(Base):
                     parent = os.path.dirname(directory[:-1])
 
                     if not parent:
+                        self._not_tern_project_file_found = True
                         break
 
                     if os.path.isfile(os.path.join(directory, '.tern-project')):
@@ -314,6 +317,11 @@ class Source(Base):
         return result
 
     def gather_candidates(self, context):
+        # if file was not found skip it
+        self.debug(self._not_tern_project_file_found)
+        if (self._not_tern_project_file_found):
+            return []
+
         line, col = context['position'][1:3]
         pos = {"line": line - 1, "ch": col}
         result = self.completation(pos)
