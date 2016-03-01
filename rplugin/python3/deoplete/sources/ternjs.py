@@ -47,6 +47,9 @@ class Source(Base):
 
         self.name = 'ternjs'
         self.mark = '[ternjs]'
+        self.min_pattern_length = 0
+        self.input_pattern = r'\.\w*'
+        self.is_bytepos = False
         self.rank = 500
         self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
 
@@ -61,6 +64,9 @@ class Source(Base):
         self._tern_buffer_sent_at = None
         # Used to avoid try to start server if not file found
         self._not_tern_project_file_found = False
+
+        # Start server
+        self.start_server()
 
     def __del__(self):
         self.stop_server()
@@ -90,7 +96,7 @@ class Source(Base):
         while True:
             line = self.proc.stdout.readline().decode("utf-8")
             if not line:
-                self.debug("Failed to start server" + (output and ":\n" + output))
+                print("Failed to start server" + (output and ":\n" + output))
                 self.last_failed = time.time()
                 return None
 
@@ -102,7 +108,6 @@ class Source(Base):
                 output += line
 
     def stop_server(self):
-        self.debug('Calling strop server')
         if self.proc is None:
             return
 
@@ -318,13 +323,13 @@ class Source(Base):
 
     def gather_candidates(self, context):
         # if file was not found skip it
-        self.debug(self._not_tern_project_file_found)
         if (self._not_tern_project_file_found):
             return []
-
-        line, col = context['position'][1:3]
-        pos = {"line": line - 1, "ch": col}
+        line = context['position'][1]
+        col = context['complete_position']
+        pos = {"line": line - 1, "ch": col + 1}
         result = self.completation(pos)
-        self.debug('*' * 100)
-        self.debug(result)
+        # self.debug('*' * 100)
+        # self.debug(result)
+        # self.debug('*' * 100)
         return result
