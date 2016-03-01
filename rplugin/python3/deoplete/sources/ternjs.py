@@ -47,10 +47,8 @@ class Source(Base):
 
         self.name = 'ternjs'
         self.mark = '[ternjs]'
-        self.min_pattern_length = 0
         self.input_pattern = r'\.\w*'
-        self.is_bytepos = False
-        self.rank = 500
+        self.rank = 700
         self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
 
         self._project_directory = None
@@ -62,6 +60,7 @@ class Source(Base):
         self._tern_command = 'tern'
         self._tern_arguments = ''
         self._tern_buffer_sent_at = None
+        self._tern_timeout = 1
         # Used to avoid try to start server if not file found
         self._not_tern_project_file_found = False
 
@@ -144,9 +143,8 @@ class Source(Base):
         payload = json.dumps(doc)
         if not PY2:
             payload = payload.encode('utf-8')
-
         try:
-            req = opener.open("http://" + self.localhost + ":" + str(self.port) + "/", payload, 1)
+            req = opener.open("http://" + self.localhost + ":" + str(self.port) + "/", payload, self._tern_timeout)
             result = req.read()
             if not PY2:
                 result = result.decode('utf-8')
@@ -155,6 +153,8 @@ class Source(Base):
             message = error.read()
             if not PY2:
                 message = message.decode('utf-8')
+            # self.debug('Exception')
+            # self.debug(message)
             if not silent:
                 logger.error(message)
             return None
@@ -184,7 +184,6 @@ class Source(Base):
         query["file"] = fname
         query["end"] = pos
         query["lineCharPositions"] = True
-
         data = None
         try:
             data = self.make_request(doc, silent)
@@ -321,6 +320,10 @@ class Source(Base):
             result = tp + "\n" + result
         return result
 
+    def get_complete_position(self, context):
+        m = re.search(r'\w*$', context['input'])
+        return m.start() if m else -1
+
     def gather_candidates(self, context):
         # if file was not found skip it
         if (self._not_tern_project_file_found):
@@ -328,6 +331,7 @@ class Source(Base):
         line = context['position'][1]
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col + 1}
+        # self.debug(pos)
         result = self.completation(pos)
         # self.debug('*' * 100)
         # self.debug(result)
