@@ -59,7 +59,7 @@ class Source(Base):
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
         self._tern_arguments = ''
-        self._tern_buffer_sent_at = None
+        self._tern_buffer_sent_at = {'undo_tree': None, 'ch': None}
         self._tern_timeout = 1
         # Used to avoid try to start server if not file found
         self._not_tern_project_file_found = False
@@ -141,6 +141,7 @@ class Source(Base):
 
     def make_request(self, doc, silent):
         payload = json.dumps(doc)
+        # self.debug(payload)
         if not PY2:
             payload = payload.encode('utf-8')
         try:
@@ -153,7 +154,6 @@ class Source(Base):
             message = error.read()
             if not PY2:
                 message = message.decode('utf-8')
-            # self.debug('Exception')
             # self.debug(message)
             if not silent:
                 logger.error(message)
@@ -169,8 +169,7 @@ class Source(Base):
         current_seq = self.vim.eval("undotree()['seq_cur']")
 
         doc = {"query": query, "files": []}
-
-        if current_seq == self._tern_buffer_sent_at:
+        if current_seq == self._tern_buffer_sent_at['undo_tree'] and self._tern_buffer_sent_at['ch'] == pos['ch']:
             fname, sending_file = self.relative_file(), False
         elif len(self.vim.current.buffer) > 250 and fragments:
             f = self.buffer_fragment()
@@ -207,7 +206,8 @@ class Source(Base):
                     raise e
 
         if sending_file:
-            self._tern_buffer_sent_at = current_seq
+            self._tern_buffer_sent_at['undo_tree'] = current_seq
+            self._tern_buffer_sent_at['ch'] = pos['ch']
 
         return data
 
