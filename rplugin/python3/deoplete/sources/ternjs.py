@@ -259,17 +259,17 @@ class Source(Base):
     def completion_icon(self, type):
         _type = '(obj)'
         if type is None or type == "?":
-            _type = " (?)"
+            _type = "(?)"
         elif type.startswith("fn("):
-            _type = " (fn)"
+            _type = "(fn)"
         elif type.startswith("["):
-            _type = " ([])"
+            _type = "([])"
         elif type == "number":
-            _type = " (num)"
+            _type = "(num)"
         elif type == "string":
-            _type = " (str)"
+            _type = "(str)"
         elif type == "bool":
-            _type = " (bool)"
+            _type = "(bool)"
 
         return _type
 
