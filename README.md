@@ -13,7 +13,7 @@ Based on tern_for_vim and deoplete-jedi
   - https://github.com/Shougo/deoplete.nvim
 
 - ternjs
-  - http://ternjs.net/
+  - http://ternjs.net/  - This needs to be installed globally
 
 
 ## Install
