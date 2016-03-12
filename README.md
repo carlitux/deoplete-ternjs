@@ -19,7 +19,7 @@ Based on tern_for_vim and deoplete-jedi
 ## Install
 
 ```vim
-NeoBundle 'carlitux/deoplete-ternjs'
+NeoBundle 'carlitux/deoplete-ternjs', { 'build': { 'mac': 'npm install -g tern', 'unix': 'npm install -g tern' }}
 # or
 Plug 'carlitux/deoplete-ternjs'
 ```
