@@ -58,9 +58,14 @@ class Source(Base):
         self.last_failed = 0
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
-        self._tern_arguments = ''
+        self._tern_arguments = ' --verbose > /tmp/ternjs.log'
         self._tern_buffer_sent_at = {'undo_tree': None, 'ch': None}
-        self._tern_timeout = 1
+
+        if vim.eval('exists("g:tern_request_timeout")'):
+            self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
+        else:
+            self._tern_timeout = 1
+
         # Used to avoid try to start server if not file found
         self._not_tern_project_file_found = False
 
@@ -84,7 +89,7 @@ class Source(Base):
             env = os.environ.copy()
             env['PATH'] += ':/usr/local/bin'
 
-        self.proc = subprocess.Popen(self._tern_command + self._tern_arguments,
+        self.proc = subprocess.Popen(self._tern_command + ' ' + self._tern_arguments,
                                      cwd=self._project_directory, env=env,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE,

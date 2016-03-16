@@ -24,6 +24,12 @@ NeoBundle 'carlitux/deoplete-ternjs'
 Plug 'carlitux/deoplete-ternjs'
 ```
 
+## Configuration example
+```vim
+" Use deoplete.
+let g:tern_request_timeout = 1
+```
+
 Also if you are using add loadEagerly this to your .bashrc or .zshrc, this will
 allow you load all files you need when ternjs is started.
 
