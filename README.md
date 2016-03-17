@@ -38,7 +38,7 @@ Plug 'carlitux/deoplete-ternjs'
 
 ## Ternjs Configuration
 
-[Tern configuration docs](http://ternjs.net/doc/manual.html#configuration) source for javascript.
+[Tern configuration docs](http://ternjs.net/doc/manual.html#configuration).
 
 
 ## Vim Configuration example
