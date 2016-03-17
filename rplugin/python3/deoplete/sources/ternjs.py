@@ -58,7 +58,7 @@ class Source(Base):
         self.last_failed = 0
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
-        self._tern_arguments = ' --verbose > /tmp/ternjs.log'
+        self._tern_arguments = ''
         self._tern_buffer_sent_at = {'undo_tree': None, 'ch': None}
 
         if vim.eval('exists("g:tern_request_timeout")'):
