@@ -60,11 +60,14 @@ class Source(Base):
         self._tern_command = 'tern'
         self._tern_arguments = ''
         self._tern_buffer_sent_at = {'undo_tree': None, 'ch': None}
+        self._tern_timeout = 1
+        self._tern_show_signature = True
 
         if vim.eval('exists("g:tern_request_timeout")'):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
-        else:
-            self._tern_timeout = 1
+
+        if vim.eval('exists("g:tern_show_signature_in_pum")'):
+            self._tern_show_signature = vim.eval('g:tern_show_signature_in_pum') == '0'
 
         # Start server
         self.start_server()
@@ -266,9 +269,15 @@ class Source(Base):
         if type is None or type == "?":
             _type = "(?)"
         elif type.startswith("fn("):
-            _type = "(fn)"
+            if (self._tern_show_signature):
+                _type = type
+            else:
+                _type = "(fn)"
         elif type.startswith("["):
-            _type = "([])"
+            if self._tern_show_signature:
+                _type = "(" + type + ")"
+            else:
+                _type = "([])"
         elif type == "number":
             _type = "(num)"
         elif type == "string":
