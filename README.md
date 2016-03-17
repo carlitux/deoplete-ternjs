@@ -17,14 +17,15 @@ Based on tern_for_vim and deoplete-jedi
 
 ## Important!
 
-If not .tern-project found on file (current editing buffer) directory or parents,
-deoplete-ternjs will start the ternjs server on current working directory:
+If no .tern-project file is found in the current buffer's directory that is
+being edited or its ancestors, deoplete-ternjs will start the ternjs server 
+in the current working directory:
 
 ```vim
 :pwd
 ```
 
-Letting ternjs use the default setup.
+allowing ternjs use the default setup.
 
 
 ## Install
@@ -35,13 +36,18 @@ NeoBundle 'carlitux/deoplete-ternjs', { 'build': { 'mac': 'npm install -g tern',
 Plug 'carlitux/deoplete-ternjs'
 ```
 
-## Configuration example
+## Ternjs Configuration
+
+[Tern configuration docs](http://ternjs.net/doc/manual.html#configuration) source for javascript.
+
+
+## Vim Configuration example
 ```vim
 " Use deoplete.
 let g:tern_request_timeout = 1
 ```
 
-Also if you are using add loadEagerly this to your .bashrc or .zshrc, this will
+Also if you are using add loadEagerly - * many files * - this to your .bashrc or .zshrc, this will
 allow you load all files you need when ternjs is started.
 
 ```bash
