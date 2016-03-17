@@ -15,6 +15,17 @@ Based on tern_for_vim and deoplete-jedi
 - ternjs
   - http://ternjs.net/  - This needs to be installed globally
 
+## Important!
+
+If not .tern-project found on file (current editing buffer) directory or parents,
+deoplete-ternjs will start the ternjs server on current working directory:
+
+```vim
+:pwd
+```
+
+Letting ternjs use the default setup.
+
 
 ## Install
 

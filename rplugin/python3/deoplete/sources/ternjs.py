@@ -66,9 +66,6 @@ class Source(Base):
         else:
             self._tern_timeout = 1
 
-        # Used to avoid try to start server if not file found
-        self._not_tern_project_file_found = False
-
         # Start server
         self.start_server()
 
@@ -120,7 +117,7 @@ class Source(Base):
         self.proc = None
 
     def _search_tern_project_dir(self):
-        if not self._project_directory and not self._not_tern_project_file_found:
+        if not self._project_directory:
             directory = self.vim.eval("expand('%:p:h')")
 
             if PY2:
@@ -135,7 +132,10 @@ class Source(Base):
                     parent = os.path.dirname(directory[:-1])
 
                     if not parent:
-                        self._not_tern_project_file_found = True
+                        self._project_directory = self.vim.eval('getcwd()')
+                        if PY2:
+                            self._project_directory = self._project_directory.decode(self.vim.eval('&encoding'))
+
                         break
 
                     if os.path.isfile(os.path.join(directory, '.tern-project')):
@@ -330,9 +330,6 @@ class Source(Base):
         return m.start() if m else -1
 
     def gather_candidates(self, context):
-        # if file was not found skip it
-        if (self._not_tern_project_file_found):
-            return []
         line = context['position'][1]
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col + 1}
