@@ -67,7 +67,7 @@ class Source(Base):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
 
         if vim.eval('exists("g:tern_show_signature_in_pum")'):
-            self._tern_show_signature = vim.eval('g:tern_show_signature_in_pum') == '0'
+            self._tern_show_signature = vim.eval('g:tern_show_signature_in_pum') != '0'
 
         # Start server
         self.start_server()
