@@ -61,6 +61,8 @@ class Source(Base):
         self._tern_arguments = ''
         self._tern_timeout = 1
         self._tern_show_signature = True
+        self._tern_first_request = False
+        self._tern_last_length = 0
 
         if vim.eval('exists("g:tern_request_timeout")'):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
@@ -171,14 +173,18 @@ class Source(Base):
             query = {"type": query}
 
         doc = {"query": query, "files": []}
-        if not self._file_changed:
+
+        file_length = len(self.vim.current.buffer)
+
+        if not self._file_changed and self._tern_first_request:
             fname = self.relative_file()
-        elif len(self.vim.current.buffer) > 250 and fragments:
+        elif file_length > 250 and fragments:
             f = self.buffer_fragment()
             doc["files"].append(f)
             pos = {"line": pos["line"] - f["offsetLines"], "ch": pos["ch"]}
             fname = "#0"
         else:
+            self._tern_first_request = True
             doc["files"].append(self.full_buffer())
             fname = "#0"
 
@@ -329,11 +335,11 @@ class Source(Base):
         return m.start() if m else -1
 
     def gather_candidates(self, context):
-        self._file_changed = 'TextChanged' in context['event']
+        self._file_changed = 'TextChanged' in context['event'] or self._tern_last_length != len(self.vim.current.buffer)
         line = context['position'][1]
         col = context['complete_position']
-        pos = {"line": line - 1, "ch": col + 1}
-        # self.debug(pos)
+        pos = {"line": line - 1, "ch": col}
+        # self.debug(context)
         result = self.completation(pos)
         # self.debug('*' * 100)
         # self.debug(result)
