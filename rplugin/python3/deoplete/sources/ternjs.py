@@ -59,7 +59,6 @@ class Source(Base):
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
         self._tern_arguments = ''
-        self._tern_buffer_sent_at = {'undo_tree': None, 'ch': None}
         self._tern_timeout = 1
         self._tern_show_signature = True
 
@@ -68,9 +67,6 @@ class Source(Base):
 
         if vim.eval('exists("g:tern_show_signature_in_pum")'):
             self._tern_show_signature = vim.eval('g:tern_show_signature_in_pum') != '0'
-
-        # Start server
-        self.start_server()
 
     def __del__(self):
         self.stop_server()
@@ -174,19 +170,17 @@ class Source(Base):
         if isinstance(query, str):
             query = {"type": query}
 
-        current_seq = self.vim.eval("undotree()['seq_cur']")
-
         doc = {"query": query, "files": []}
-        if current_seq == self._tern_buffer_sent_at['undo_tree'] and self._tern_buffer_sent_at['ch'] == pos['ch']:
-            fname, sending_file = self.relative_file(), False
+        if not self._file_changed:
+            fname = self.relative_file()
         elif len(self.vim.current.buffer) > 250 and fragments:
             f = self.buffer_fragment()
             doc["files"].append(f)
             pos = {"line": pos["line"] - f["offsetLines"], "ch": pos["ch"]}
-            fname, sending_file = "#0", False
+            fname = "#0"
         else:
             doc["files"].append(self.full_buffer())
-            fname, sending_file = "#0", True
+            fname = "#0"
 
         query["file"] = fname
         query["end"] = pos
@@ -212,10 +206,6 @@ class Source(Base):
             except Exception as e:
                 if not silent:
                     raise e
-
-        if sending_file:
-            self._tern_buffer_sent_at['undo_tree'] = current_seq
-            self._tern_buffer_sent_at['ch'] = pos['ch']
 
         return data
 
@@ -339,6 +329,7 @@ class Source(Base):
         return m.start() if m else -1
 
     def gather_candidates(self, context):
+        self._file_changed = 'TextChanged' in context['event']
         line = context['position'][1]
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col + 1}
