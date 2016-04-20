@@ -191,6 +191,8 @@ class Source(Base):
         query["file"] = fname
         query["end"] = pos
         query["lineCharPositions"] = True
+        query["omitObjectPrototype"] = False
+        query["sort"] = False
         data = None
         try:
             data = self.make_request(doc, silent)
