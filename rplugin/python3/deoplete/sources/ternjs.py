@@ -211,9 +211,11 @@ class Source(Base):
 
                 if data is None:
                     return None
-            except Exception as e:
-                if not silent:
-                    raise e
+            except:
+                pass
+            # except Exception as e:
+            #     if not silent:
+            #         raise e
 
         return data
 
