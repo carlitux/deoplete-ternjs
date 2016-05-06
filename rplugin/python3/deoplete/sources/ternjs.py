@@ -344,7 +344,7 @@ class Source(Base):
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col}
         # self.debug(context)
-        result = self.completation(pos)
+        result = self.completation(pos) or []
         # self.debug('*' * 100)
         # self.debug(result)
         # self.debug('*' * 100)
