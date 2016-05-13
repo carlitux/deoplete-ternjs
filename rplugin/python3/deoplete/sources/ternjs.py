@@ -63,6 +63,7 @@ class Source(Base):
         self._tern_show_signature = True
         self._tern_first_request = False
         self._tern_last_length = 0
+        self._trying_to_start = False
 
         if vim.eval('exists("g:tern_request_timeout")'):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
@@ -74,12 +75,16 @@ class Source(Base):
         self.stop_server()
 
     def start_server(self):
+        if self._trying_to_start:
+            return
+
         if not self._tern_command:
             return None
 
         if time.time() - self.last_failed < 30:
             return None
 
+        self._trying_to_start = True
         self._search_tern_project_dir()
         env = None
 
@@ -100,6 +105,7 @@ class Source(Base):
             if not line:
                 print("Failed to start server" + (output and ":\n" + output))
                 self.last_failed = time.time()
+                self._trying_to_start = False
                 return None
 
             match = re.match("Listening on port (\\d+)", line)
