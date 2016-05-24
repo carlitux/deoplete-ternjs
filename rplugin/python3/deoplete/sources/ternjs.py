@@ -58,7 +58,7 @@ class Source(Base):
         self.last_failed = 0
         self.cached = {'row': -1, 'end': -1}
         self._tern_command = 'tern'
-        self._tern_arguments = ''
+        self._tern_arguments = '--persistent'
         self._tern_timeout = 1
         self._tern_show_signature = True
         self._tern_first_request = False
