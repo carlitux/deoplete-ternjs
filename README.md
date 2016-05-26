@@ -18,7 +18,7 @@ Based on tern_for_vim and deoplete-jedi
 ## Important!
 
 If no .tern-project file is found in the current buffer's directory that is
-being edited or its ancestors, deoplete-ternjs will start the ternjs server 
+being edited or its ancestors, deoplete-ternjs will start the ternjs server
 in the current working directory:
 
 ```vim
@@ -46,6 +46,13 @@ Plug 'carlitux/deoplete-ternjs'
 " Use deoplete.
 let g:tern_request_timeout = 1
 let g:tern_show_signature_in_pum = 0  " This do disable full signature type on autocomplete
+```
+
+If you are using [tern_for_vim](https://github.com/ternjs/tern_for_vim), you also want to use the same tern command with deoplete-ternjs
+```vim
+" Use tern_for_vim.
+let g:tern#command = ["tern"]
+let g:tern#arguments = ["--persistent"]
 ```
 
 Also if you are using add loadEagerly - * many files * - this to your .bashrc or .zshrc, this will
