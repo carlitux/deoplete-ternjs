@@ -8,7 +8,7 @@ import platform
 import subprocess
 import time
 
-from deoplete.sources.base import Base
+from deoplete.source.base import Base
 # from deoplete.util import load_external_module
 from logging import getLogger
 
