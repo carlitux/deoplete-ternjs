@@ -57,7 +57,7 @@ class Source(Base):
         self.proc = None
         self.last_failed = 0
         self.cached = {'row': -1, 'end': -1}
-        self._tern_command = 'tern'
+        self._tern_command = self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
         self._tern_arguments = '--persistent'
         self._tern_timeout = 1
         self._tern_show_signature = True
