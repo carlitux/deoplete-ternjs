@@ -30,10 +30,16 @@ allowing ternjs use the default setup.
 
 ## Install
 
+Using [NeoBundle](https://github.com/Shougo/neobundle.vim)
+
 ```vim
 NeoBundle 'carlitux/deoplete-ternjs', { 'build': { 'mac': 'npm install -g tern', 'unix': 'npm install -g tern' }}
-# or
-Plug 'carlitux/deoplete-ternjs'
+```
+
+or using [Plug](https://github.com/junegunn/vim-plug)
+
+```vim
+Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 ```
 
 ## Ternjs Configuration
