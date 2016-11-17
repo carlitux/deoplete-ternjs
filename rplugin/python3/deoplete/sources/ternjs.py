@@ -27,6 +27,9 @@ current = __file__
 logger = getLogger(__name__)
 windows = platform.system() == "Windows"
 
+import_re = r'=?\s*require\(["\'"][\w\./-]*$|\s+from\s+["\'][\w\./-]*$'
+import_pattern = re.compile(import_re)
+
 
 class RequestError(Exception):
 
@@ -44,20 +47,15 @@ class Source(Base):
 
         self.name = 'ternjs'
         self.mark = '[ternjs]'
-        self.input_pattern = (r'\.\w*$|'
-                              r'^\s*@\w*$|'
-                              r'=?\s*require\(["\'][\w-\/\.]*$|'
-                              r'\s+from ["\'][\w-\/\.]*$')
+        self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 700
         self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
 
         self._project_directory = None
-        self._stripe_import_quotes = False
         self.port = None
         self.localhost = (windows and "127.0.0.1") or "localhost"
         self.proc = None
         self.last_failed = 0
-        self.cached = {'row': -1, 'end': -1}
         self._tern_command = \
             self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
         self._tern_arguments = '--persistent'
@@ -300,18 +298,6 @@ class Source(Base):
         return _type
 
     def completation(self, pos):
-        current_row = pos['line']
-        current_col = pos['ch']
-        current_line = self.vim.current.line
-
-        cached = current_row == int(self.cached["row"])
-        cached = cached and current_col >= int(self.cached["end"])
-        cached = cached and current_line[0:int(self.cached["end"])] == self.cached["word"]
-        cached = cached and not re.match(".*\\W", current_line[int(self.cached["end"]):current_col])
-
-        if cached and self.cached['data']:
-            return self.cached['data']
-
         command = {
             "type": "completions",
             "types": True,
@@ -325,18 +311,9 @@ class Source(Base):
 
             for rec in data["completions"]:
                 completions.append({
-                    "word": rec["name"][1:-1] if self._stripe_import_quotes else rec["name"],
+                    "word": rec["name"],
                     "menu": self.completion_icon(rec.get("type")),
                     "info": self.type_doc(rec)})
-
-            start, end = (data["start"]["ch"], data["end"]["ch"])
-            self.cached = {
-                "row": current_row,
-                "start": start,
-                "end": end,
-                "word": current_line[0:end],
-                "data": completions
-            }
 
         return completions
 
@@ -348,12 +325,9 @@ class Source(Base):
         return result
 
     def get_complete_position(self, context):
-        self._stripe_import_quotes = False
-        m = re.search(r'=?\s*require\(["\'"][\w-\/\.]*$|'
-                      r'\s+from\s+["\'][\w-\/\.]*$', context['input'])
+        m = import_pattern.search(context['input'])
         if m:
-            self._stripe_import_quotes = True
-            return m.end()
+            return re.search(r'["\']', context['input']).start()
 
         m = re.search(r'\w*$', context['input'])
         return m.start() if m else -1
@@ -364,6 +338,11 @@ class Source(Base):
         line = context['position'][1]
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col}
+
+        # Update autocomplete position so we can handle well imports
+        m = import_pattern.search(context['input'])
+        if m:
+            pos['ch'] = m.end()
 
         result = self.completation(pos) or []
         return result
