@@ -327,6 +327,8 @@ class Source(Base):
     def get_complete_position(self, context):
         m = import_pattern.search(context['input'])
         if m:
+            # need to tell from what position autocomplete as
+            # needs to autocomplete from start quote return that
             return re.search(r'["\']', context['input']).start()
 
         m = re.search(r'\w*$', context['input'])
@@ -339,7 +341,9 @@ class Source(Base):
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col}
 
-        # Update autocomplete position so we can handle well imports
+        # Update autocomplete position need to send the position
+        # where cursor is because the position is the start of
+        # quote
         m = import_pattern.search(context['input'])
         if m:
             pos['ch'] = m.end()
