@@ -9,7 +9,6 @@ import subprocess
 import time
 
 from deoplete.source.base import Base
-# from deoplete.util import load_external_module
 from logging import getLogger
 
 PY2 = int(sys.version[0]) == 2
@@ -24,8 +23,6 @@ else:  # Py3
 
 opener = request.build_opener(request.ProxyHandler({}))
 current = __file__
-# load_external_module(current, 'sources/deoplete_ternjs')
-# from profiler import timeit
 
 logger = getLogger(__name__)
 windows = platform.system() == "Windows"
@@ -47,17 +44,22 @@ class Source(Base):
 
         self.name = 'ternjs'
         self.mark = '[ternjs]'
-        self.input_pattern = r'\.\w*'
+        self.input_pattern = (r'\.\w*$|'
+                              r'^\s*@\w*$|'
+                              r'=?\s*require\(["\'][\w-]*$|'
+                              r'\s+from ["\'][\w-]*$')
         self.rank = 700
         self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
 
         self._project_directory = None
+        self._stripe_import_quotes = False
         self.port = None
         self.localhost = (windows and "127.0.0.1") or "localhost"
         self.proc = None
         self.last_failed = 0
         self.cached = {'row': -1, 'end': -1}
-        self._tern_command = self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
+        self._tern_command = \
+            self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
         self._tern_arguments = '--persistent'
         self._tern_timeout = 1
         self._tern_show_signature = True
@@ -69,7 +71,8 @@ class Source(Base):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
 
         if vim.eval('exists("g:tern_show_signature_in_pum")'):
-            self._tern_show_signature = vim.eval('g:tern_show_signature_in_pum') != '0'
+            self._tern_show_signature = \
+                vim.eval('g:tern_show_signature_in_pum') != '0'
 
     def __del__(self):
         self.stop_server()
@@ -158,7 +161,6 @@ class Source(Base):
 
     def make_request(self, doc, silent):
         payload = json.dumps(doc)
-        # self.debug(payload)
         if not PY2:
             payload = payload.encode('utf-8')
         try:
@@ -171,7 +173,6 @@ class Source(Base):
             message = error.read()
             if not PY2:
                 message = message.decode('utf-8')
-            # self.debug(message)
             if not silent:
                 logger.error(message)
             return None
@@ -323,9 +324,10 @@ class Source(Base):
         if data is not None:
 
             for rec in data["completions"]:
-                completions.append({"word": rec["name"],
-                                    "menu": self.completion_icon(rec.get("type")),
-                                    "info": self.type_doc(rec)})
+                completions.append({
+                    "word": rec["name"][1:-1] if self._stripe_import_quotes else rec["name"],
+                    "menu": self.completion_icon(rec.get("type")),
+                    "info": self.type_doc(rec)})
 
             start, end = (data["start"]["ch"], data["end"]["ch"])
             self.cached = {
@@ -346,17 +348,22 @@ class Source(Base):
         return result
 
     def get_complete_position(self, context):
+        self._stripe_import_quotes = False
+        m = re.search(r'=?\s*require\(["\'"][\w-]*$|'
+                      '\s+from\s+["\'][\w-]*$', context['input'])
+        if m:
+            self._stripe_import_quotes = True
+            return m.end()
+
         m = re.search(r'\w*$', context['input'])
         return m.start() if m else -1
 
     def gather_candidates(self, context):
-        self._file_changed = 'TextChanged' in context['event'] or self._tern_last_length != len(self.vim.current.buffer)
+        self._file_changed = 'TextChanged' in context['event'] or \
+            self._tern_last_length != len(self.vim.current.buffer)
         line = context['position'][1]
         col = context['complete_position']
         pos = {"line": line - 1, "ch": col}
-        # self.debug(context)
+
         result = self.completation(pos) or []
-        # self.debug('*' * 100)
-        # self.debug(result)
-        # self.debug('*' * 100)
         return result
