@@ -46,8 +46,8 @@ class Source(Base):
         self.mark = '[ternjs]'
         self.input_pattern = (r'\.\w*$|'
                               r'^\s*@\w*$|'
-                              r'=?\s*require\(["\'][\w-]*$|'
-                              r'\s+from ["\'][\w-]*$')
+                              r'=?\s*require\(["\'][\w-/]*$|'
+                              r'\s+from ["\'][\w-/]*$')
         self.rank = 700
         self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
 
@@ -349,8 +349,8 @@ class Source(Base):
 
     def get_complete_position(self, context):
         self._stripe_import_quotes = False
-        m = re.search(r'=?\s*require\(["\'"][\w-]*$|'
-                      '\s+from\s+["\'][\w-]*$', context['input'])
+        m = re.search(r'=?\s*require\(["\'"][\w-/]*$|'
+                      '\s+from\s+["\'][\w-/]*$', context['input'])
         if m:
             self._stripe_import_quotes = True
             return m.end()
