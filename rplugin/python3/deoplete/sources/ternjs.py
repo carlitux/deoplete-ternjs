@@ -350,7 +350,7 @@ class Source(Base):
     def get_complete_position(self, context):
         self._stripe_import_quotes = False
         m = re.search(r'=?\s*require\(["\'"][\w-\/\.]*$|'
-                      '\s+from\s+["\'][\w-\/\.]*$', context['input'])
+                      r'\s+from\s+["\'][\w-\/\.]*$', context['input'])
         if m:
             self._stripe_import_quotes = True
             return m.end()
