@@ -49,7 +49,7 @@ class Source(Base):
         self.mark = '[ternjs]'
         self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 700
-        self.filetypes = ['javascript', 'jsx', 'javascript.jsx']
+        self.filetypes = ['javascript', 'jsx', 'javascript.jsx', 'vue']
 
         self._project_directory = None
         self.port = None
