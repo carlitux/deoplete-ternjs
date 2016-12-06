@@ -8,7 +8,6 @@ let g:deoplete#sources#ternjs#tern_bin = get(g:, 'deoplete#sources#ternjs#tern_b
 
 if !exists('g:tern#filetypes')
 let g:tern#filetypes = [
-            \ 'javascript',
             \ 'jsx',
             \ 'javascript.jsx',
             \ 'vue'
