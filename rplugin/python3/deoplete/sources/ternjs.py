@@ -49,7 +49,9 @@ class Source(Base):
         self.mark = '[ternjs]'
         self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 700
-        self.filetypes = ['javascript'].extend(self.vim.vars['tern#filetypes'])
+        self.filetypes = ['javascript']
+        if 'tern#filetypes' in vim.vars:
+            self.filetypes.extend(vim.vars['tern#filetypes'])
 
         self._project_directory = None
         self.port = None
