@@ -62,17 +62,12 @@ class Source(Base):
             self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
         self._tern_arguments = '--persistent'
         self._tern_timeout = 1
-        self._tern_show_signature = True
         self._tern_first_request = False
         self._tern_last_length = 0
         self._trying_to_start = False
 
         if vim.eval('exists("g:tern_request_timeout")'):
             self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
-
-        if vim.eval('exists("g:tern_show_signature_in_pum")'):
-            self._tern_show_signature = \
-                vim.eval('g:tern_show_signature_in_pum') != '0'
 
     def __del__(self):
         self.stop_server()
@@ -281,15 +276,9 @@ class Source(Base):
         if type is None or type == "?":
             _type = "(?)"
         elif type.startswith("fn("):
-            if (self._tern_show_signature):
-                _type = type
-            else:
-                _type = "(fn)"
+            _type = "(fn)"
         elif type.startswith("["):
-            if self._tern_show_signature:
-                _type = "(" + type + ")"
-            else:
-                _type = "([])"
+            _type = "(" + type + ")"
         elif type == "number":
             _type = "(num)"
         elif type == "string":
@@ -314,7 +303,8 @@ class Source(Base):
             for rec in data["completions"]:
                 completions.append({
                     "word": rec["name"],
-                    "menu": self.completion_icon(rec.get("type")),
+                    "kind": self.completion_icon(rec.get("type")),
+                    "abbr": rec.get("type").replace('fn', rec["name"], 1),
                     "info": self.type_doc(rec)})
 
         return completions
