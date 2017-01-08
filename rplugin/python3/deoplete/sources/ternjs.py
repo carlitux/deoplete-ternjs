@@ -314,7 +314,9 @@ class Source(Base):
                     'kind': icon,
                     'word': rec['name'],
                     'abbr': abbr,
-                    'info': self.type_doc(rec)})
+                    'info': self.type_doc(rec),
+                    'dup': 1,
+                })
 
         return completions
 
