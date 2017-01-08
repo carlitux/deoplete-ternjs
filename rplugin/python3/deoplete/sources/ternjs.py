@@ -301,10 +301,19 @@ class Source(Base):
         if data is not None:
 
             for rec in data['completions']:
+                icon = self.completion_icon(rec.get('type'))
+                abbr = None
+
+                if (icon == '(fn)'):
+                    abbr = rec.get('type', '').replace('fn', rec['name'], 1)
+                else:
+                    abbr = rec['name']
+
                 completions.append({
+                    'menu': '[ternjs] ',
+                    'kind': icon,
                     'word': rec['name'],
-                    'kind': self.completion_icon(rec.get('type')),
-                    'abbr': rec.get('type', '').replace('fn', rec['name'], 1),
+                    'abbr': abbr,
                     'info': self.type_doc(rec)})
 
         return completions
