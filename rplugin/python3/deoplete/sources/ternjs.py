@@ -55,7 +55,7 @@ class Source(Base):
 
         self._project_directory = None
         self.port = None
-        self.localhost = (windows and "127.0.0.1") or "localhost"
+        self.localhost = (windows and '127.0.0.1') or 'localhost'
         self.proc = None
         self.last_failed = 0
         self._tern_command = \
@@ -67,7 +67,7 @@ class Source(Base):
         self._trying_to_start = False
 
         if vim.eval('exists("g:tern_request_timeout")'):
-            self._tern_timeout = float(vim.eval("g:tern_request_timeout"))
+            self._tern_timeout = float(vim.eval('g:tern_request_timeout'))
 
     def __del__(self):
         self.stop_server()
@@ -86,9 +86,9 @@ class Source(Base):
         self._search_tern_project_dir()
         env = None
 
-        portFile = os.path.join(self._project_directory, ".tern-port")
+        portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
-            self.port = int(open(portFile, "r").read())
+            self.port = int(open(portFile, 'r').read())
             return
 
         if platform.system() == 'Darwin':
@@ -104,14 +104,14 @@ class Source(Base):
         output = ""
 
         while True:
-            line = self.proc.stdout.readline().decode("utf-8")
+            line = self.proc.stdout.readline().decode('utf-8')
             if not line:
-                print("Failed to start server" + (output and ":\n" + output))
+                print('Failed to start server' + (output and ':\n' + output))
                 self.last_failed = time.time()
                 self._trying_to_start = False
                 return None
 
-            match = re.match("Listening on port (\\d+)", line)
+            match = re.match('Listening on port (\\d+)', line)
             if match:
                 self.port = int(match.group(1))
                 return
@@ -159,7 +159,7 @@ class Source(Base):
         if not PY2:
             payload = payload.encode('utf-8')
         try:
-            req = opener.open("http://" + self.localhost + ":" + str(self.port) + "/", payload, self._tern_timeout)
+            req = opener.open('http://' + self.localhost + ':' + str(self.port) + '/', payload, self._tern_timeout)
             result = req.read()
             if not PY2:
                 result = result.decode('utf-8')
@@ -177,9 +177,9 @@ class Source(Base):
             self.start_server()
 
         if isinstance(query, str):
-            query = {"type": query}
+            query = {'type': query}
 
-        doc = {"query": query, "files": []}
+        doc = {'query': query, 'files': []}
 
         file_length = len(self.vim.current.buffer)
 
@@ -187,19 +187,19 @@ class Source(Base):
             fname = self.relative_file()
         elif file_length > 250 and fragments:
             f = self.buffer_fragment()
-            doc["files"].append(f)
-            pos = {"line": pos["line"] - f["offsetLines"], "ch": pos["ch"]}
-            fname = "#0"
+            doc['files'].append(f)
+            pos = {'line': pos['line'] - f['offsetLines'], 'ch': pos['ch']}
+            fname = '#0'
         else:
             self._tern_first_request = True
-            doc["files"].append(self.full_buffer())
-            fname = "#0"
+            doc['files'].append(self.full_buffer())
+            fname = '#0'
 
-        query["file"] = fname
-        query["end"] = pos
-        query["lineCharPositions"] = True
-        query["omitObjectPrototype"] = False
-        query["sort"] = False
+        query['file'] = fname
+        query['end'] = pos
+        query['lineCharPositions'] = True
+        query['omitObjectPrototype'] = False
+        query['sort'] = False
         data = None
         try:
             data = self.make_request(doc, silent)
@@ -229,14 +229,14 @@ class Source(Base):
     def full_buffer(self):
         text = self.buffer_slice(self.vim.current.buffer, 0,
                                  len(self.vim.current.buffer))
-        return {"type": "full",
-                "name": self.relative_file(),
-                "text": text}
+        return {'type': 'full',
+                'name': self.relative_file(),
+                'text': text}
 
     def buffer_slice(self, buf, pos, end):
-        text = ""
+        text = ''
         while pos < end:
-            text += buf[pos] + "\n"
+            text += buf[pos] + '\n'
             pos += 1
         return text
 
@@ -254,9 +254,9 @@ class Source(Base):
         start = None
 
         for i in range(max(0, line - 50), line):
-            if not re.match(".*\\bfunction\\b", buffer[i]):
+            if not re.match('.*\\bfunction\\b', buffer[i]):
                 continue
-            indent = len(re.match("^\\s*", buffer[i]).group(0))
+            indent = len(re.match('^\\s*', buffer[i]).group(0))
             if min_indent is None or indent <= min_indent:
                 min_indent = indent
                 start = i
@@ -266,33 +266,33 @@ class Source(Base):
 
         end = min(len(buffer) - 1, line + 20)
 
-        return {"type": "part",
-                "name": self.relative_file(),
-                "text": self.buffer_slice(buffer, start, end),
-                "offsetLines": start}
+        return {'type': 'part',
+                'name': self.relative_file(),
+                'text': self.buffer_slice(buffer, start, end),
+                'offsetLines': start}
 
     def completion_icon(self, type):
         _type = '(obj)'
-        if type is None or type == "?":
-            _type = "(?)"
-        elif type.startswith("fn("):
-            _type = "(fn)"
-        elif type.startswith("["):
-            _type = "(" + type + ")"
-        elif type == "number":
-            _type = "(num)"
-        elif type == "string":
-            _type = "(str)"
-        elif type == "bool":
-            _type = "(bool)"
+        if type is None or type == '?':
+            _type = '(?)'
+        elif type.startswith('fn('):
+            _type = '(fn)'
+        elif type.startswith('['):
+            _type = '(' + type + ')'
+        elif type == 'number':
+            _type = '(num)'
+        elif type == 'string':
+            _type = '(str)'
+        elif type == 'bool':
+            _type = '(bool)'
 
         return _type
 
     def completation(self, pos):
         command = {
-            "type": "completions",
-            "types": True,
-            "docs": True
+            'type': 'completions',
+            'types': True,
+            'docs': True
         }
 
         data = self.run_command(command, pos)
@@ -300,20 +300,20 @@ class Source(Base):
 
         if data is not None:
 
-            for rec in data["completions"]:
+            for rec in data['completions']:
                 completions.append({
-                    "word": rec["name"],
-                    "kind": self.completion_icon(rec.get("type")),
-                    "abbr": rec.get("type").replace('fn', rec["name"], 1),
-                    "info": self.type_doc(rec)})
+                    'word': rec['name'],
+                    'kind': self.completion_icon(rec.get('type')),
+                    'abbr': rec.get('type', '').replace('fn', rec['name'], 1),
+                    'info': self.type_doc(rec)})
 
         return completions
 
     def type_doc(self, rec):
-        tp = rec.get("type")
-        result = rec.get("doc", " ")
-        if tp and tp != "?":
-            result = tp + "\n" + result
+        tp = rec.get('type')
+        result = rec.get('doc', ' ')
+        if tp and tp != '?':
+            result = tp + '\n' + result
         return result
 
     def get_complete_position(self, context):
