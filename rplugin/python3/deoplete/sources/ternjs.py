@@ -351,5 +351,13 @@ class Source(Base):
         if m:
             pos['ch'] = m.end()
 
-        result = self.completation(pos) or []
+        try:
+            result = self.completation(pos) or []
+        except Exception as e:
+            result = []
+            self.vim.call('echoerr "=========== TernJS Error =========="')
+            self.vim.call('echoerr "{}"'.format(e))
+            self.vim.call('echoerr "==================================="')
+
+
         return result
