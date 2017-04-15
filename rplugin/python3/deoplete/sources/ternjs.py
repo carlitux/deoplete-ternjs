@@ -352,7 +352,6 @@ class Source(Base):
             pos['ch'] = m.end()
 
         try:
-            raise Exception('test')
             result = self.completation(pos) or []
         except Exception as e:
             import traceback
