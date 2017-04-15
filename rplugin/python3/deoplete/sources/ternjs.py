@@ -235,7 +235,7 @@ class Source(Base):
 
     def buffer_slice(self, buf, pos, end):
         text = ''
-        while pos < end:
+        while pos < len(buf):
             text += buf[pos] + '\n'
             pos += 1
         return text
