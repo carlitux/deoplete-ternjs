@@ -86,6 +86,10 @@ class Source(Base):
         self._search_tern_project_dir()
         env = None
 
+        # if no project directory just skip
+        if (self._project_directory is None):
+            return
+
         portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
             self.port = int(open(portFile, 'r').read())
