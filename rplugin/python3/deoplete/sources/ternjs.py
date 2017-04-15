@@ -352,12 +352,15 @@ class Source(Base):
             pos['ch'] = m.end()
 
         try:
+            raise Exception('test')
             result = self.completation(pos) or []
         except Exception as e:
-            result = []
-            self.vim.call('echoerr "=========== TernJS Error =========="')
-            self.vim.call('echoerr "{}"'.format(e))
-            self.vim.call('echoerr "==================================="')
+            import traceback
+            _, _, tb = sys.exc_info()
+            filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
+            extra = '{}:{}, in {}\n    {}'.format(filename, lineno, funname, line)
+            self.vim.err_write('Ternjs Error: {}\n{}\n'.format(e, extra))
 
+            result = []
 
         return result
