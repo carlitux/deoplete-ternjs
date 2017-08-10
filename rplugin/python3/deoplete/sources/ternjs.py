@@ -3,41 +3,21 @@
 import os
 import re
 import json
-import sys
 import platform
 import subprocess
+import threading
 import time
 
+from urllib import request
+from urllib.error import HTTPError
+
 from deoplete.source.base import Base
-from logging import getLogger
-
-PY2 = int(sys.version[0]) == 2
-
-if PY2:
-    import urllib2 as request
-    from urllib2 import HTTPError
-else:  # Py3
-    from urllib import request
-    from urllib.error import HTTPError
 
 
-opener = request.build_opener(request.ProxyHandler({}))
-current = __file__
-
-logger = getLogger(__name__)
-windows = platform.system() == "Windows"
-
+is_window = platform.system() == "Windows"
 import_re = r'=?\s*require\(["\'"][\w\./-]*$|\s+from\s+["\'][\w\./-]*$'
 import_pattern = re.compile(import_re)
-
-
-class RequestError(Exception):
-
-    def __init__(self, message):
-        self.message = message
-
-    def __str__(self):
-        return self.message
+opener = request.build_opener(request.ProxyHandler({}))
 
 
 class Source(Base):
@@ -45,141 +25,181 @@ class Source(Base):
     def __init__(self, vim):
         super(Source, self).__init__(vim)
 
-        self.name = 'ternjs'
-        self.mark = '[ternjs]'
+        self.name = 'tern'
+        self.mark = '[tern]'
         self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 900
         self.filetypes = ['javascript']
-        if 'tern#filetypes' in vim.vars:
-            self.filetypes.extend(vim.vars['tern#filetypes'])
+        self.filetypes.extend(vim.vars.get('deoplete#sources#ternjs#filetypes', []))
 
-        self._project_directory = None
-        self.port = None
-        self.localhost = (windows and '127.0.0.1') or 'localhost'
-        self.proc = None
-        self.last_failed = 0
-        self._tern_command = \
-            self.vim.vars['deoplete#sources#ternjs#tern_bin'] or 'tern'
+    def on_init(self, context):
+        vars = context['vars']
+
+        self._tern_command = vars.get('deoplete#sources#ternjs#tern_bin', 'tern')
+        self._tern_timeout = vars.get('deoplete#sources#ternjs#timeout', 1)
         self._tern_arguments = '--persistent'
-        self._tern_timeout = 1
+        self._localhost = (is_window and '127.0.0.1') or 'localhost'
+
+        # Call to vim/nvim on init to do async the source
+        self._vim_current_path = self.vim.eval("expand('%:p:h')")
+        self._vim_current_cwd = self.vim.eval('getcwd()')
+ 
+        # Start ternjs in thread
+        self._is_starting_server = True
+        self._is_server_started = False
+        self._port = None
+        self._proc = None
         self._tern_first_request = False
         self._tern_last_length = 0
-        self._trying_to_start = False
 
-        if vim.eval('exists("g:tern_request_timeout")'):
-            self._tern_timeout = float(vim.eval('g:tern_request_timeout'))
+    def get_complete_position(self, context):
+        m = import_pattern.search(context['input'])
+        if m:
+            # need to tell from what position autocomplete as
+            # needs to autocomplete from start quote return that
+            return re.search(r'["\']', context['input']).start()
+
+        m = re.search(r'\w*$', context['input'])
+        return m.start() if m else -1
+
+    def gather_candidates(self, context):
+        if not self._is_server_started:
+            self.debug('gather_candidates: Server is not started, starting')
+            startThread = threading.Thread(target=self.initialize)
+            startThread.start()
+            startThread.join()
+            self._is_server_started = True
+            context['is_async'] = True
+            return
+
+        if self._is_starting_server:
+            self.debug('gather_candidates: Starting server so is async')
+            context['is_async'] = True
+            return
+
+        if self._port:
+            self._file_changed = 'TextChanged' in context['event'] or \
+                self._tern_last_length != len(self.vim.current.buffer)
+            line = context['position'][1]
+            col = context['complete_position']
+            pos = {"line": line - 1, "ch": col}
+
+            # Update autocomplete position need to send the position
+            # where cursor is because the position is the start of
+            # quote
+            m = import_pattern.search(context['input'])
+            if m:
+                pos['ch'] = m.end()
+
+            try:
+                result = self.completation(pos)
+            except Exception as e:
+                import sys
+                import traceback
+                _, _, tb = sys.exc_info()
+                filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
+                extra = '{}:{}, in {}\n    {}'.format(filename, lineno, funname, line)
+                self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
+
+                result = None 
+
+            return result
+
+    def initialize(self):
+        self._project_directory = self._search_tern_project_dir()
+        self.debug('Directory to use: {}'.format(self._project_directory))
+        self.start_server()
+        self._url = 'http://{}:{}/'.format(self._localhost, self._port)
+        self.debug('URL to connect: {}'.format(self._url))
+        self._is_starting_server = False
 
     def __del__(self):
         self.stop_server()
 
     def start_server(self):
-        if self._trying_to_start:
-            return
-
         if not self._tern_command:
-            return None
-
-        if time.time() - self.last_failed < 30:
-            return None
-
-        self._trying_to_start = True
-        self._search_tern_project_dir()
-        env = None
-
-        # if no project directory just skip
-        if (self._project_directory is None):
+            self.error('No tern bin set.')
             return
+
+        if not self._project_directory:
+            self.error('Project directory is not valid.')
+            return
+
+        env = None
 
         portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
-            self.port = int(open(portFile, 'r').read())
+            self._port = int(open(portFile, 'r').read())
+            self.debug('Using running tern server with port: {}'.format(self._port))
             return
 
         if platform.system() == 'Darwin':
             env = os.environ.copy()
             env['PATH'] += ':/usr/local/bin'
 
-        self.proc = subprocess.Popen(self._tern_command + ' ' + self._tern_arguments,
-                                     cwd=self._project_directory, env=env,
+        self._proc = subprocess.Popen([self._tern_command, self._tern_arguments],
+                                     cwd=self._project_directory,
+                                     env=env,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT,
-                                     shell=True)
+                                     stderr=subprocess.STDOUT)
         output = ""
 
         while True:
-            line = self.proc.stdout.readline().decode('utf-8')
+            line = self._proc.stdout.readline().decode('utf-8')
             if not line:
-                print('Failed to start server' + (output and ':\n' + output))
-                self.last_failed = time.time()
-                self._trying_to_start = False
-                return None
+                self.error('Failed to start server' + (output and ':\n' + output))
+                return
 
             match = re.match('Listening on port (\\d+)', line)
             if match:
-                self.port = int(match.group(1))
+                self._port = int(match.group(1))
+                self.debug('Tern server started on port: {}'.format(self._port))
                 return
             else:
                 output += line
 
     def stop_server(self):
-        if self.proc is None:
+        if self._proc is None:
             return
 
-        self.proc.stdin.close()
-        self.proc.wait()
-        self.proc = None
+        self._proc.stdin.close()
+        self._proc.wait()
+        self._proc = None
 
     def _search_tern_project_dir(self):
-        if not self._project_directory:
-            directory = self.vim.eval("expand('%:p:h')")
+        directory = self._vim_current_path
 
-            if PY2:
-                directory = directory.decode(self.vim.eval('&encoding'))
+        # If not a directory, don't start the server
+        if not os.path.isdir(directory):
+            return None
 
-            if not os.path.isdir(directory):
-                return ''
+        if directory:
+            while True:
+                parent = os.path.dirname(directory[:-1])
 
-            if directory:
-                self._project_directory = directory
-                while True:
-                    parent = os.path.dirname(directory[:-1])
+                if not parent:
+                    return self._vim_current_cwd
 
-                    if not parent:
-                        self._project_directory = self.vim.eval('getcwd()')
-                        if PY2:
-                            self._project_directory = self._project_directory.decode(self.vim.eval('&encoding'))
+                if os.path.isfile(os.path.join(directory, '.tern-project')):
+                    return directory
 
-                        break
-
-                    if os.path.isfile(os.path.join(directory, '.tern-project')):
-                        self._project_directory = directory
-                        break
-
-                    directory = parent
+                directory = parent
 
     def make_request(self, doc, silent):
-        payload = json.dumps(doc)
-        if not PY2:
-            payload = payload.encode('utf-8')
+        payload = json.dumps(doc).encode('utf-8')
+        self.debug('Payload: {}'.format(payload))
         try:
-            req = opener.open('http://' + self.localhost + ':' + str(self.port) + '/', payload, self._tern_timeout)
+            req = opener.open(self._url, payload, self._tern_timeout)
             result = req.read()
-            if not PY2:
-                result = result.decode('utf-8')
+            self.debug('make_request result: {}'.format(result))
             return json.loads(result)
         except HTTPError as error:
             message = error.read()
-            if not PY2:
-                message = message.decode('utf-8')
-            if not silent:
-                logger.error(message)
+            self.error(message)
             return None
 
     def run_command(self, query, pos, fragments=True, silent=False):
-        if self.port is None:
-            self.start_server()
-
         if isinstance(query, str):
             query = {'type': query}
 
@@ -205,28 +225,7 @@ class Source(Base):
         query['omitObjectPrototype'] = False
         query['sort'] = False
         data = None
-        try:
-            data = self.make_request(doc, silent)
-            if data is None:
-                return None
-        except:
-            pass
-
-        if data is None:
-            try:
-                self.start_server()
-                if self.port is None:
-                    return
-
-                data = self.make_request(doc, silent)
-
-                if data is None:
-                    return None
-            except:
-                pass
-            # except Exception as e:
-            #     if not silent:
-            #         raise e
+        data = self.make_request(doc, silent)
 
         return data
 
@@ -246,9 +245,6 @@ class Source(Base):
 
     def relative_file(self):
         filename = self.vim.eval("expand('%:p')")
-        if PY2:
-            filename = filename.decode(self.vim.eval('&encoding'))
-
         return filename[len(self._project_directory) + 1:]
 
     def buffer_fragment(self):
@@ -301,6 +297,7 @@ class Source(Base):
 
         data = self.run_command(command, pos)
         completions = []
+        self.debug('completation data: {}'.format(data))
 
         if data is not None:
 
@@ -314,7 +311,7 @@ class Source(Base):
                     abbr = rec['name']
 
                 completions.append({
-                    'menu': '[ternjs] ',
+                    'menu': '[TernJS] ',
                     'kind': icon,
                     'word': rec['name'],
                     'abbr': abbr,
@@ -331,39 +328,3 @@ class Source(Base):
             result = tp + '\n' + result
         return result
 
-    def get_complete_position(self, context):
-        m = import_pattern.search(context['input'])
-        if m:
-            # need to tell from what position autocomplete as
-            # needs to autocomplete from start quote return that
-            return re.search(r'["\']', context['input']).start()
-
-        m = re.search(r'\w*$', context['input'])
-        return m.start() if m else -1
-
-    def gather_candidates(self, context):
-        self._file_changed = 'TextChanged' in context['event'] or \
-            self._tern_last_length != len(self.vim.current.buffer)
-        line = context['position'][1]
-        col = context['complete_position']
-        pos = {"line": line - 1, "ch": col}
-
-        # Update autocomplete position need to send the position
-        # where cursor is because the position is the start of
-        # quote
-        m = import_pattern.search(context['input'])
-        if m:
-            pos['ch'] = m.end()
-
-        try:
-            result = self.completation(pos) or []
-        except Exception as e:
-            import traceback
-            _, _, tb = sys.exc_info()
-            filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
-            extra = '{}:{}, in {}\n    {}'.format(filename, lineno, funname, line)
-            self.vim.err_write('Ternjs Error: {}\n{}\n'.format(e, extra))
-
-            result = []
-
-        return result

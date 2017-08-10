@@ -1,0 +1,4 @@
+" Just to debug
+" let g:deoplete#enable_profile = 1
+nmap jd :call deoplete#enable_logging('DEBUG', 'deoplete.log')<CR>
+nmap je :call deoplete#custom#source('tern', 'debug_enabled', 1)<CR>

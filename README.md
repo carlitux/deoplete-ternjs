@@ -49,12 +49,12 @@ Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 
 ## Vim Configuration example
 ```vim
-" Use deoplete.
-let g:tern_request_timeout = 1
-let g:tern_show_signature_in_pum = '0'  " This do disable full signature type on autocomplete
+" Set bin if you have many instalations
+let g:deoplete#sources#ternjs#tern_bin = '/path/to/tern_bin'
+let g:deoplete#sources#ternjs#timeout = 1
 
 "Add extra filetypes
-let g:tern#filetypes = [
+let g:deoplete#sources#ternjs#filetypes = [
                 \ 'jsx',
                 \ 'javascript.jsx',
                 \ 'vue',
