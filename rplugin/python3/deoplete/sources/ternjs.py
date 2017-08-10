@@ -26,7 +26,7 @@ class Source(Base):
         super(Source, self).__init__(vim)
 
         self.name = 'tern'
-        self.mark = '[tern]'
+        self.mark = '[TernJS]'
         self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 900
         self.filetypes = ['javascript']
@@ -70,14 +70,11 @@ class Source(Base):
             startThread.join()
             self._is_server_started = True
             context['is_async'] = True
-            return
-
-        if self._is_starting_server:
+        elif self._is_starting_server:
             self.debug('gather_candidates: Starting server so is async')
             context['is_async'] = True
-            return
-
-        if self._port:
+        elif self._port:
+            context['is_async'] = False
             self._file_changed = 'TextChanged' in context['event'] or \
                 self._tern_last_length != len(self.vim.current.buffer)
             line = context['position'][1]
