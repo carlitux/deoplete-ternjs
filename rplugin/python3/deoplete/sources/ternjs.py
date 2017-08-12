@@ -6,7 +6,6 @@ import json
 import platform
 import subprocess
 import threading
-import time
 
 from urllib import request
 from urllib.error import HTTPError
@@ -40,10 +39,27 @@ class Source(Base):
         self._tern_arguments = '--persistent'
         self._localhost = (is_window and '127.0.0.1') or 'localhost'
 
+        self._tern_types = bool(vars.get('deoplete#sources#ternjs#types', 0))
+        self._tern_depths = bool(vars.get('deoplete#sources#ternjs#depths', 0))
+        self._tern_docs = bool(vars.get('deoplete#sources#ternjs#docs', 0))
+        self._tern_filter = bool(vars.get('deoplete#sources#ternjs#filter', 1))
+        self._tern_case_insensitive = \
+            bool(vars.get('deoplete#sources#ternjs#case_insensitive', 0))
+        self._tern_guess = bool(vars.get('deoplete#sources#ternjs#guess', 1))
+        self._tern_sort = bool(vars.get('deoplete#sources#ternjs#sort', 1))
+        self._tern_expand_word_forward = \
+            bool(vars.get('deoplete#sources#ternjs#expand_word_forward', 1))
+        self._tern_omit_object_prototype = \
+            bool(vars.get('deoplete#sources#ternjs#omit_object_prototype', 1))
+        self._tern_include_keywords = \
+            bool(vars.get('deoplete#sources#ternjs#include_keywords', 0))
+        self._tern_in_literal = \
+            bool(vars.get('deoplete#sources#ternjs#in_literal', 1))
+
         # Call to vim/nvim on init to do async the source
         self._vim_current_path = self.vim.eval("expand('%:p:h')")
         self._vim_current_cwd = self.vim.eval('getcwd()')
- 
+
         # Start ternjs in thread
         self._is_starting_server = True
         self._is_server_started = False
@@ -98,7 +114,7 @@ class Source(Base):
                 extra = '{}:{}, in {}\n    {}'.format(filename, lineno, funname, line)
                 self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
 
-                result = None 
+                result = None
 
             return result
 
@@ -134,12 +150,14 @@ class Source(Base):
             env = os.environ.copy()
             env['PATH'] += ':/usr/local/bin'
 
-        self._proc = subprocess.Popen([self._tern_command, self._tern_arguments],
-                                     cwd=self._project_directory,
-                                     env=env,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT)
+        self._proc = subprocess.Popen(
+            [self._tern_command, self._tern_arguments],
+            cwd=self._project_directory,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
         output = ""
 
         while True:
@@ -268,28 +286,20 @@ class Source(Base):
                 'text': self.buffer_slice(buffer, start, end),
                 'offsetLines': start}
 
-    def completion_icon(self, type):
-        _type = '(obj)'
-        if type is None or type == '?':
-            _type = '(?)'
-        elif type.startswith('fn('):
-            _type = '(fn)'
-        elif type.startswith('['):
-            _type = '(' + type + ')'
-        elif type == 'number':
-            _type = '(num)'
-        elif type == 'string':
-            _type = '(str)'
-        elif type == 'bool':
-            _type = '(bool)'
-
-        return _type
-
     def completation(self, pos):
         command = {
             'type': 'completions',
-            'types': True,
-            'docs': True
+            'types': self._tern_types,
+            'depths': self._tern_types,
+            'docs': self._tern_docs,
+            'filter': self._tern_filter,
+            'caseInsensitive': self._tern_case_insensitive,
+            'guess': self._tern_guess,
+            'sort': self._tern_sort,
+            'expandWordForward': self._tern_expand_word_forward,
+            'omitObjectPrototype': self._tern_omit_object_prototype,
+            'includeKeywords': self._tern_include_keywords,
+            'inLiteral': self._tern_in_literal,
         }
 
         data = self.run_command(command, pos)
@@ -299,22 +309,26 @@ class Source(Base):
         if data is not None:
 
             for rec in data['completions']:
-                icon = self.completion_icon(rec.get('type'))
-                abbr = None
-
-                if (icon == '(fn)'):
-                    abbr = rec.get('type', '').replace('fn', rec['name'], 1)
-                else:
-                    abbr = rec['name']
-
-                completions.append({
+                item = {
                     'menu': '[TernJS] ',
-                    'kind': icon,
-                    'word': rec['name'],
-                    'abbr': abbr,
-                    'info': self.type_doc(rec),
-                    'dup': 1,
-                })
+                    'dub': 1,
+                }
+
+                if isinstance(rec, str):
+                    item['word'] = rec
+                else:
+                    icon = rec.get('type')
+                    if icon == rec['name']:
+                        icon = 'object'
+
+                    item['kind'] = icon
+                    item['word'] = rec['name']
+                    item['abbr'] = rec['name']
+
+                    if self._tern_docs:
+                        item['info'] = self.type_doc(rec)
+
+                completions.append(item)
 
         return completions
 
