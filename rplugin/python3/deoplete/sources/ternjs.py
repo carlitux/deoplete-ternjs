@@ -208,7 +208,7 @@ class Source(Base):
             req = opener.open(self._url, payload, self._tern_timeout)
             result = req.read()
             self.debug('make_request result: {}'.format(result))
-            return json.loads(result)
+            return json.loads(result.decode('utf8'))
         except HTTPError as error:
             message = error.read()
             self.error(message)
