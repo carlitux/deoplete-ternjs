@@ -29,12 +29,14 @@ class Source(Base):
         self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
         self.rank = 900
         self.filetypes = ['javascript']
-        self.filetypes.extend(vim.vars.get('deoplete#sources#ternjs#filetypes', []))
+        self.filetypes.extend(vim.vars.get(
+            'deoplete#sources#ternjs#filetypes', []))
 
     def on_init(self, context):
         vars = context['vars']
 
-        self._tern_command = vars.get('deoplete#sources#ternjs#tern_bin', 'tern')
+        self._tern_command = vars.get(
+            'deoplete#sources#ternjs#tern_bin', 'tern')
         self._tern_timeout = vars.get('deoplete#sources#ternjs#timeout', 1)
         self._tern_arguments = '--persistent'
         self._localhost = (is_window and '127.0.0.1') or 'localhost'
@@ -111,7 +113,8 @@ class Source(Base):
                 import traceback
                 _, _, tb = sys.exc_info()
                 filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
-                extra = '{}:{}, in {}\n    {}'.format(filename, lineno, funname, line)
+                extra = '{}:{}, in {}\n    {}'.format(
+                    filename, lineno, funname, line)
                 self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
 
                 result = None
@@ -143,7 +146,8 @@ class Source(Base):
         portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
             self._port = int(open(portFile, 'r').read())
-            self.debug('Using running tern server with port: {}'.format(self._port))
+            self.debug(
+                'Using running tern server with port: {}'.format(self._port))
             return
 
         if platform.system() == 'Darwin':
@@ -163,13 +167,15 @@ class Source(Base):
         while True:
             line = self._proc.stdout.readline().decode('utf-8')
             if not line:
-                self.error('Failed to start server' + (output and ':\n' + output))
+                self.error('Failed to start server' +
+                           (output and ':\n' + output))
                 return
 
             match = re.match('Listening on port (\\d+)', line)
             if match:
                 self._port = int(match.group(1))
-                self.debug('Tern server started on port: {}'.format(self._port))
+                self.debug(
+                    'Tern server started on port: {}'.format(self._port))
                 return
             else:
                 output += line
@@ -310,7 +316,6 @@ class Source(Base):
 
             for rec in data['completions']:
                 item = {
-                    'menu': '[TernJS] ',
                     'dub': 1,
                 }
 
@@ -338,4 +343,3 @@ class Source(Base):
         if tp and tp != '?':
             result = tp + '\n' + result
         return result
-
