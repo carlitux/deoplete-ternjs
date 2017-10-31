@@ -157,6 +157,7 @@ class Source(Base):
         self._proc = subprocess.Popen(
             [self._tern_command, self._tern_arguments],
             cwd=self._project_directory,
+            shell=is_window,
             env=env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
