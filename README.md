@@ -88,7 +88,7 @@ let g:deoplete#sources#ternjs#sort = 0
 let g:deoplete#sources#ternjs#expand_word_forward = 0
 
 " Whether to ignore the properties of Object.prototype unless they have been 
-" spelled out by at least to characters. Default: 1
+" spelled out by at least two characters. Default: 1
 let g:deoplete#sources#ternjs#omit_object_prototype = 0
 
 " Whether to include JavaScript keywords when completing something that is not 
