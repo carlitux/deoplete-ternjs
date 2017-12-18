@@ -87,7 +87,7 @@ class Source(Base):
             self._is_server_started = True
         elif self._port:
             if context['is_async']:
-                if self.candidates:
+                if self.candidates is not None:
                     context['is_async'] = False
                     return self.candidates
             else:
