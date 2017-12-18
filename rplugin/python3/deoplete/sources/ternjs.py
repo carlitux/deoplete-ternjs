@@ -322,7 +322,7 @@ class Source(Base):
 
             for rec in data['completions']:
                 item = {
-                    'dub': 1,
+                    'dup': 0,
                 }
 
                 if isinstance(rec, str):
