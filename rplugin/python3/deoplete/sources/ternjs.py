@@ -35,12 +35,10 @@ class Source(Base):
     def on_init(self, context):
         vars = context['vars']
 
-        self._tern_command = vars.get(
-            'deoplete#sources#ternjs#tern_bin', 'tern')
-        self._tern_timeout = vars.get('deoplete#sources#ternjs#timeout', 1)
-        self._tern_arguments = '--persistent'
         self._localhost = (is_window and '127.0.0.1') or 'localhost'
 
+        self._tern_command = vars.get(
+            'deoplete#sources#ternjs#tern_bin', 'tern')
         self._tern_types = bool(vars.get('deoplete#sources#ternjs#types', 0))
         self._tern_depths = bool(vars.get('deoplete#sources#ternjs#depths', 0))
         self._tern_docs = bool(vars.get('deoplete#sources#ternjs#docs', 0))
@@ -63,12 +61,11 @@ class Source(Base):
         self._vim_current_cwd = self.vim.eval('getcwd()')
 
         # Start ternjs in thread
-        self._is_starting_server = True
         self._is_server_started = False
         self._port = None
         self._proc = None
-        self._tern_first_request = False
-        self._tern_last_length = 0
+        self._buffer_length = 0
+        self._current_buffer = []
 
     def get_complete_position(self, context):
         m = import_pattern.search(context['input'])
@@ -82,52 +79,69 @@ class Source(Base):
 
     def gather_candidates(self, context):
         if not self._is_server_started:
-            self.debug('gather_candidates: Server is not started, starting')
-            startThread = threading.Thread(target=self.initialize)
+            # self.debug('gather_candidates: Server is not started, starting')
+            startThread = threading.Thread(
+                target=self.initialize, name='Start Tern Server')
             startThread.start()
             startThread.join()
             self._is_server_started = True
-            context['is_async'] = True
-        elif self._is_starting_server:
-            self.debug('gather_candidates: Starting server so is async')
-            context['is_async'] = True
         elif self._port:
-            context['is_async'] = False
-            self._file_changed = 'TextChanged' in context['event'] or \
-                self._tern_last_length != len(self.vim.current.buffer)
-            line = context['position'][1]
-            col = context['complete_position']
-            pos = {"line": line - 1, "ch": col}
+            if context['is_async']:
+                if self.candidates:
+                    context['is_async'] = False
+                    return self.candidates
+            else:
+                self.candidates = None
+                context['is_async'] = True
+                line = context['position'][1]
+                col = context['complete_position']
+                pos = {"line": line - 1, "ch": col}
 
-            # Update autocomplete position need to send the position
-            # where cursor is because the position is the start of
-            # quote
-            m = import_pattern.search(context['input'])
-            if m:
-                pos['ch'] = m.end()
+                # Cache variables of neovim
+                self._current_buffer = self.vim.current.buffer[:]
+                self._buffer_length = len(self._current_buffer)
+                # NOTE: This could be pos.line????
+                self._current_line = self.vim.eval("line('.')") - 1
+                self._relative_file = self.vim.eval("expand('%:p')")
+                self._relative_file = self._relative_file[len(
+                    self._project_directory) + 1:]
 
-            try:
-                result = self.completation(pos)
-            except Exception as e:
-                import sys
-                import traceback
-                _, _, tb = sys.exc_info()
-                filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
-                extra = '{}:{}, in {}\n    {}'.format(
-                    filename, lineno, funname, line)
-                self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
+                # Update autocomplete position need to send the position
+                # where cursor is because the position is the start of
+                # quote
+                m = import_pattern.search(context['input'])
+                if m:
+                    pos['ch'] = m.end()
 
-                result = None
+                startThread = threading.Thread(
+                    target=self.completation, name='Request Completion', args=(pos,))
+                startThread.start()
+                startThread.join()
 
-            return result
+        # This ensure that async request will work
+        return []
+
+        # try:
+        #     result = self.completation(pos)
+        # except Exception as e:
+        #     import sys
+        #     import traceback
+        #     _, _, tb = sys.exc_info()
+        #     filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
+        #     extra = '{}:{}, in {}\n    {}'.format(
+        #         filename, lineno, funname, line)
+        #     self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
+        #
+        #     result = None
+        #
+        # return result
 
     def initialize(self):
         self._project_directory = self._search_tern_project_dir()
-        self.debug('Directory to use: {}'.format(self._project_directory))
+        # self.debug('Directory to use: {}'.format(self._project_directory))
         self.start_server()
         self._url = 'http://{}:{}/'.format(self._localhost, self._port)
-        self.debug('URL to connect: {}'.format(self._url))
-        self._is_starting_server = False
+        # self.debug('URL to connect: {}'.format(self._url))
 
     def __del__(self):
         self.stop_server()
@@ -146,8 +160,8 @@ class Source(Base):
         portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
             self._port = int(open(portFile, 'r').read())
-            self.debug(
-                'Using running tern server with port: {}'.format(self._port))
+            # self.debug(
+            #     'Using running tern server with port: {}'.format(self._port))
             return
 
         if platform.system() == 'Darwin':
@@ -155,7 +169,7 @@ class Source(Base):
             env['PATH'] += ':/usr/local/bin'
 
         self._proc = subprocess.Popen(
-            [self._tern_command, self._tern_arguments],
+            [self._tern_command, '--persistent'],
             cwd=self._project_directory,
             shell=is_window,
             env=env,
@@ -175,8 +189,8 @@ class Source(Base):
             match = re.match('Listening on port (\\d+)', line)
             if match:
                 self._port = int(match.group(1))
-                self.debug(
-                    'Tern server started on port: {}'.format(self._port))
+                # self.debug(
+                #     'Tern server started on port: {}'.format(self._port))
                 return
             else:
                 output += line
@@ -210,11 +224,11 @@ class Source(Base):
 
     def make_request(self, doc, silent):
         payload = json.dumps(doc).encode('utf-8')
-        self.debug('Payload: {}'.format(payload))
+        # self.debug('Payload: {}'.format(payload))
         try:
-            req = opener.open(self._url, payload, self._tern_timeout)
+            req = opener.open(self._url, payload)
             result = req.read()
-            self.debug('make_request result: {}'.format(result))
+            # self.debug('make_request result: {}'.format(result))
             return json.loads(result.decode('utf8'))
         except HTTPError as error:
             message = error.read()
@@ -227,17 +241,12 @@ class Source(Base):
 
         doc = {'query': query, 'files': []}
 
-        file_length = len(self.vim.current.buffer)
-
-        if not self._file_changed and self._tern_first_request:
-            fname = self.relative_file()
-        elif file_length > 250 and fragments:
+        if self._buffer_length > 250 and fragments:
             f = self.buffer_fragment()
             doc['files'].append(f)
             pos = {'line': pos['line'] - f['offsetLines'], 'ch': pos['ch']}
             fname = '#0'
         else:
-            self._tern_first_request = True
             doc['files'].append(self.full_buffer())
             fname = '#0'
 
@@ -246,32 +255,28 @@ class Source(Base):
         query['lineCharPositions'] = True
         query['omitObjectPrototype'] = False
         query['sort'] = False
-        data = None
         data = self.make_request(doc, silent)
 
         return data
 
     def full_buffer(self):
-        text = self.buffer_slice(self.vim.current.buffer, 0,
-                                 len(self.vim.current.buffer))
+        text = self.buffer_slice(self._current_buffer, 0,
+                                 len(self._current_buffer))
         return {'type': 'full',
-                'name': self.relative_file(),
+                'name': self._relative_file,
                 'text': text}
 
-    def buffer_slice(self, buf, pos, end):
-        text = ''
-        while pos < len(buf):
-            text += buf[pos] + '\n'
-            pos += 1
-        return text
-
-    def relative_file(self):
-        filename = self.vim.eval("expand('%:p')")
-        return filename[len(self._project_directory) + 1:]
+    def buffer_slice(self, buf, start, end):
+        return '\n'.join(buf[start:end])
+        # text = ''
+        # while pos < len(buf):
+        #     text += buf[pos] + '\n'
+        #     pos += 1
+        # return text
 
     def buffer_fragment(self):
-        line = self.vim.eval("line('.')") - 1
-        buffer = self.vim.current.buffer
+        line = self._current_line
+        buffer = self._current_buffer
         min_indent = None
         start = None
 
@@ -289,7 +294,7 @@ class Source(Base):
         end = min(len(buffer) - 1, line + 20)
 
         return {'type': 'part',
-                'name': self.relative_file(),
+                'name': self._relative_file,
                 'text': self.buffer_slice(buffer, start, end),
                 'offsetLines': start}
 
@@ -311,7 +316,7 @@ class Source(Base):
 
         data = self.run_command(command, pos)
         completions = []
-        self.debug('completation data: {}'.format(data))
+        # self.debug('completation data: {}'.format(data))
 
         if data is not None:
 
@@ -336,7 +341,7 @@ class Source(Base):
 
                 completions.append(item)
 
-        return completions
+        self.candidates = completions
 
     def type_doc(self, rec):
         tp = rec.get('type')
