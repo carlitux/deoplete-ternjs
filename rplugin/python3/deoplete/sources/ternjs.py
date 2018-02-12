@@ -9,6 +9,7 @@ import threading
 
 from urllib import request
 from urllib.error import HTTPError
+from urllib.error import URLError
 
 from deoplete.source.base import Base
 
@@ -67,6 +68,9 @@ class Source(Base):
         self._buffer_length = 0
         self._current_buffer = []
 
+        # If something was wrong this source will do nothing: Eg. Tern crashed or not installed.
+        self._do_nothing = False
+
     def get_complete_position(self, context):
         m = import_pattern.search(context['input'])
         if m:
@@ -78,70 +82,63 @@ class Source(Base):
         return m.start() if m else -1
 
     def gather_candidates(self, context):
-        if not self._is_server_started:
-            # self.debug('gather_candidates: Server is not started, starting')
-            startThread = threading.Thread(
-                target=self.initialize, name='Start Tern Server')
-            startThread.start()
-            startThread.join()
-            self._is_server_started = True
-        elif self._port:
-            if context['is_async']:
-                if self.candidates is not None:
-                    context['is_async'] = False
-                    return self.candidates
-            else:
-                self.candidates = None
-                context['is_async'] = True
-                line = context['position'][1]
-                col = context['complete_position']
-                pos = {"line": line - 1, "ch": col}
-
-                # Cache variables of neovim
-                self._current_buffer = self.vim.current.buffer[:]
-                self._buffer_length = len(self._current_buffer)
-                # NOTE: This could be pos.line????
-                self._current_line = self.vim.eval("line('.')") - 1
-                self._relative_file = self.vim.eval("expand('%:p')")
-                self._relative_file = self._relative_file[len(
-                    self._project_directory) + 1:]
-
-                # Update autocomplete position need to send the position
-                # where cursor is because the position is the start of
-                # quote
-                m = import_pattern.search(context['input'])
-                if m:
-                    pos['ch'] = m.end()
-
+        if not self._do_nothing:
+            if not self._is_server_started:
+                # self.debug('gather_candidates: Server is not started, starting')
                 startThread = threading.Thread(
-                    target=self.completation, name='Request Completion', args=(pos,))
+                    target=self.initialize, name='Start Tern Server')
                 startThread.start()
                 startThread.join()
+                self._is_server_started = True
+            elif self._port:
+                if context['is_async']:
+                    if self.candidates is not None:
+                        context['is_async'] = False
+                        return self.candidates
+                else:
+                    self.candidates = None
+                    context['is_async'] = True
+                    line = context['position'][1]
+                    col = context['complete_position']
+                    pos = {"line": line - 1, "ch": col}
 
-        # This ensure that async request will work
-        return []
+                    # Cache variables of neovim
+                    self._current_buffer = self.vim.current.buffer[:]
+                    self._buffer_length = len(self._current_buffer)
+                    # NOTE: This could be pos.line????
+                    self._current_line = self.vim.eval("line('.')") - 1
+                    self._relative_file = self.vim.eval("expand('%:p')")
+                    self._relative_file = self._relative_file[len(
+                        self._project_directory) + 1:]
 
-        # try:
-        #     result = self.completation(pos)
-        # except Exception as e:
-        #     import sys
-        #     import traceback
-        #     _, _, tb = sys.exc_info()
-        #     filename, lineno, funname, line = traceback.extract_tb(tb)[-1]
-        #     extra = '{}:{}, in {}\n    {}'.format(
-        #         filename, lineno, funname, line)
-        #     self.error('Ternjs Error: {}\n{}\n'.format(e, extra))
-        #
-        #     result = None
-        #
-        # return result
+                    # Update autocomplete position need to send the position
+                    # where cursor is because the position is the start of
+                    # quote
+                    m = import_pattern.search(context['input'])
+                    if m:
+                        pos['ch'] = m.end()
+
+                    startThread = threading.Thread(
+                        target=self.completation, name='Request Completion', args=(pos,))
+                    startThread.start()
+                    startThread.join()
+
+            # This ensure that async request will work
+            return []
+        else:
+            # clean any async call
+            context['is_async'] = False
+            return []
 
     def initialize(self):
         self._project_directory = self._search_tern_project_dir()
         # self.debug('Directory to use: {}'.format(self._project_directory))
-        self.start_server()
-        self._url = 'http://{}:{}/'.format(self._localhost, self._port)
-        # self.debug('URL to connect: {}'.format(self._url))
+        try:
+            self.start_server()
+            self._url = 'http://{}:{}/'.format(self._localhost, self._port)
+            # self.debug('URL to connect: {}'.format(self._url))
+        except FileNotFoundError:
+            self._do_nothing = True
 
     def __del__(self):
         self.stop_server()
@@ -233,7 +230,10 @@ class Source(Base):
         except HTTPError as error:
             message = error.read()
             self.error(message)
-            return None
+        except URLError as error:
+            self._do_nothing = True
+            self.vim.err_write(
+                'Looks like tern was stopped or crashed. Delete .tern-port file and restart [n]vim\n')
 
     def run_command(self, query, pos, fragments=True, silent=False):
         if isinstance(query, str):
