@@ -141,7 +141,8 @@ class Source(Base):
             self._do_nothing = True
 
     def __del__(self):
-        self.stop_server()
+        if self.is_initialized:
+            self.stop_server()
 
     def start_server(self):
         if not self._tern_command:
