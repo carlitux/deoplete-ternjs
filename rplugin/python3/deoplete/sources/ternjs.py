@@ -155,19 +155,12 @@ class Source(Base):
 
         env = None
 
-        portFile = os.path.join(self._project_directory, '.tern-port')
-        if os.path.isfile(portFile):
-            self._port = int(open(portFile, 'r').read())
-            # self.debug(
-            #     'Using running tern server with port: {}'.format(self._port))
-            return
-
         if platform.system() == 'Darwin':
             env = os.environ.copy()
             env['PATH'] += ':/usr/local/bin'
 
         self._proc = subprocess.Popen(
-            [self._tern_command, '--persistent'],
+            [self._tern_command, '--persistent', '--no-port-file'],
             cwd=self._project_directory,
             shell=is_window,
             env=env,
