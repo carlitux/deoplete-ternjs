@@ -8,14 +8,14 @@ Based on tern_for_vim and deoplete-jedi
 - Neovim and neovim/python-client
   - https://github.com/neovim/neovim
   - https://github.com/neovim/python-client
-
+  
 - deoplete.nvim
   - https://github.com/Shougo/deoplete.nvim
-
+  
 - ternjs
   - http://ternjs.net/  - This needs to be installed globally
 
-## Important!
+## Important!
 
 If no .tern-project file is found in the current buffer's directory that is
 being edited or its ancestors, deoplete-ternjs will start the ternjs server
