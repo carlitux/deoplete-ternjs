@@ -1,18 +1,14 @@
 # pylint: disable=E0401,C0111,R0903
 
-import os
-import re
 import json
+import os
 import platform
-import subprocess
+import re
 import threading
-
 from urllib import request
-from urllib.error import HTTPError
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from deoplete.source.base import Base
-
 
 is_window = platform.system() == "Windows"
 import_re = r'=?\s*require\(["\'"][@?\w\./-]*$|\s+from\s+["\'][@?\w\./-]*$'
@@ -38,8 +34,6 @@ class Source(Base):
 
         self._localhost = (is_window and '127.0.0.1') or 'localhost'
 
-        self._tern_command = vars.get(
-            'deoplete#sources#ternjs#tern_bin', 'tern')
         self._tern_types = bool(vars.get('deoplete#sources#ternjs#types', 0))
         self._tern_depths = bool(vars.get('deoplete#sources#ternjs#depths', 0))
         self._tern_docs = bool(vars.get('deoplete#sources#ternjs#docs', 0))
@@ -64,7 +58,6 @@ class Source(Base):
         # Start ternjs in thread
         self._is_server_started = False
         self._port = None
-        self._proc = None
         self._buffer_length = 0
         self._current_buffer = []
 
@@ -134,26 +127,16 @@ class Source(Base):
         self._project_directory = self._search_tern_project_dir()
         # self.debug('Directory to use: {}'.format(self._project_directory))
         try:
-            self.start_server()
+            self.find_server()
             self._url = 'http://{}:{}/'.format(self._localhost, self._port)
             # self.debug('URL to connect: {}'.format(self._url))
         except FileNotFoundError:
             self._do_nothing = True
 
-    def __del__(self):
-        if self.is_initialized:
-            self.stop_server()
-
-    def start_server(self):
-        if not self._tern_command:
-            self.error('No tern bin set.')
-            return
-
+    def find_server(self):
         if not self._project_directory:
             self.error('Project directory is not valid.')
             return
-
-        env = None
 
         portFile = os.path.join(self._project_directory, '.tern-port')
         if os.path.isfile(portFile):
@@ -162,44 +145,9 @@ class Source(Base):
             #     'Using running tern server with port: {}'.format(self._port))
             return
 
-        if platform.system() == 'Darwin':
-            env = os.environ.copy()
-            env['PATH'] += ':/usr/local/bin'
-
-        self._proc = subprocess.Popen(
-            [self._tern_command, '--persistent'],
-            cwd=self._project_directory,
-            shell=is_window,
-            env=env,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        output = ""
-
-        while True:
-            line = self._proc.stdout.readline().decode('utf-8')
-            if not line:
-                self.error('Failed to start server' +
-                           (output and ':\n' + output))
-                return
-
-            match = re.match('Listening on port (\\d+)', line)
-            if match:
-                self._port = int(match.group(1))
-                # self.debug(
-                #     'Tern server started on port: {}'.format(self._port))
-                return
-            else:
-                output += line
-
     def stop_server(self):
         if self._proc is None:
             return
-
-        self._proc.stdin.close()
-        self._proc.wait()
-        self._proc = None
 
     def _search_tern_project_dir(self):
         directory = self._vim_current_path
