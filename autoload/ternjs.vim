@@ -12,7 +12,8 @@ augroup ternjs
 augroup END
 
 function! ternjs#deleteTernPort()
-    if !empty(glob(join([getcwd(), ".tern-port"], "/")))
-        echo delete(fnameescape(join([getcwd(), ".tern-port"], "/"))) == 0 ? "Success" : "Fail"
+    let l:tern_port_path = join([fnamemodify('~', ':p'), ".tern-port"], "")
+    if !empty(glob(l:tern_port_path))
+        echo delete(fnameescape(l:tern_port_path)) == 0 ? "Success" : "Fail"
     endif
 endfunction
