@@ -89,7 +89,7 @@ class Source(Base):
                     target=self.initialize, name='Start Tern Server')
                 startThread.start()
                 startThread.join()
-                self._is_server_started = True
+                self._is_server_started = True # also if any error no need another thread
             elif self._port:
                 if context['is_async']:
                     if self.candidates is not None:
@@ -146,11 +146,11 @@ class Source(Base):
 
     def start_server(self):
         if not self._tern_command:
-            self.error('No tern bin set.')
+            self.vim.err_write('No tern bin set.')
             return
 
         if not self._project_directory:
-            self.error('Project directory is not valid.')
+            self.vim.err_write('Project directory is not valid.')
             return
 
         env = None
@@ -166,21 +166,26 @@ class Source(Base):
             env = os.environ.copy()
             env['PATH'] += ':/usr/local/bin'
 
-        self._proc = subprocess.Popen(
-            [self._tern_command, '--persistent', '--no-port-file'],
-            cwd=self._project_directory,
-            shell=is_window,
-            env=env,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
+        try:
+            self._proc = subprocess.Popen(
+                    [self._tern_command, '--persistent', '--no-port-file'],
+                    cwd=self._project_directory,
+                    shell=is_window,
+                    env=env,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    )
+        except Exception as e:
+            self.vim.err_write("Failed to start server: {}\n".format(e))
+            return None
+
         output = ""
 
         while True:
             line = self._proc.stdout.readline().decode('utf-8')
             if not line:
-                self.error('Failed to start server' +
+                self.vim.err_write('Failed to start server' +
                            (output and ':\n' + output))
                 return
 
