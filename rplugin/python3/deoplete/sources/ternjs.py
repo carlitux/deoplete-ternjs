@@ -14,7 +14,7 @@ from urllib.error import URLError
 from deoplete.source.base import Base
 
 
-is_window = platform.system() == "Windows"
+is_window = platform.system() == 'Windows'
 import_re = r'require\(\s*["\'][@\w\./-]*$|from\s+["\'][@\w\./-]*$'
 import_pattern = re.compile(import_re)
 opener = request.build_opener(request.ProxyHandler({}))
@@ -94,7 +94,7 @@ class Source(Base):
                     context['is_async'] = True
                     line = context['position'][1]
                     col = context['complete_position']
-                    pos = {"line": line - 1, "ch": col}
+                    pos = {'line': line - 1, 'ch': col}
 
                     # Cache variables of neovim
                     self._current_buffer = self.vim.current.buffer[:]
@@ -171,11 +171,11 @@ class Source(Base):
                     stderr=subprocess.STDOUT,
                     )
         except Exception as e:
-            self.vim.err_write("Failed to start server: {}\n".format(e))
+            self.vim.err_write('Failed to start server: {}\n'.format(e))
             self._do_nothing = False
             return None
 
-        output = ""
+        output = '' 
 
         while True:
             line = self._proc.stdout.readline().decode('utf-8')
@@ -329,13 +329,10 @@ class Source(Base):
                 if isinstance(rec, str):
                     item['word'] = rec
                 else:
-                    icon = rec.get('type')
-                    if icon == rec['name']:
-                        icon = 'object'
-
-                    item['kind'] = icon
+                    item['kind'] = self.get_kind(rec)
                     item['word'] = rec['name']
-                    item['abbr'] = rec['name']
+                    item['abbr'] = '{}{}'.format(rec['name'], self.get_signature(rec))
+                    # item['menu'] = 'menu'
 
                     if self._tern_docs:
                         item['info'] = self.type_doc(rec)
@@ -345,8 +342,33 @@ class Source(Base):
         self.candidates = completions
 
     def type_doc(self, rec):
-        tp = rec.get('type')
+        kind = self.get_kind(rec)
         result = rec.get('doc', ' ')
-        if tp and tp != '?':
-            result = tp + '\n' + result
+
+        if kind == 'function':
+            kind = '{}{}'.format(rec['name'], self.get_signature(rec))
+
+        if kind and kind != '?':
+            result = '{}\n\n{}'.format(kind, result)
+
         return result
+
+    def get_signature(self, rec):
+        kind = rec.get('type', '')
+
+        if kind.startswith('fn('):
+            return kind[2:] 
+
+        return ''
+
+    def get_kind(self, rec):
+        kind = rec.get('type')
+        if kind is None or kind == '?': return '(?)'
+
+        if kind.startswith('fn('):
+            return 'function'
+
+        if kind == rec.get('name'):
+            return 'object'
+
+        return kind
