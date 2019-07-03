@@ -15,7 +15,7 @@ from deoplete.source.base import Base
 
 
 is_window = platform.system() == "Windows"
-import_re = r'=?\s*require\(["\'"][@?\w\./-]*$|\s+from\s+["\'][@?\w\./-]*$'
+import_re = r'=?\s*require\(\s*["\'][@\w\./-]*$|from\s+["\'][@\w\./-]*$'
 import_pattern = re.compile(import_re)
 opener = request.build_opener(request.ProxyHandler({}))
 
@@ -27,7 +27,7 @@ class Source(Base):
 
         self.name = 'tern'
         self.mark = '[TernJS]'
-        self.input_pattern = (r'\.\w*$|^\s*@\w*$|' + import_re)
+        self.input_pattern = (r'\w+\.?$|^@\w*$|' + import_re)
         self.rank = 900
         self.filetypes = ['javascript']
         self.filetypes.extend(vim.vars.get(
@@ -178,6 +178,7 @@ class Source(Base):
                     )
         except Exception as e:
             self.vim.err_write("Failed to start server: {}\n".format(e))
+            self._do_nothing = False
             return None
 
         output = ""
