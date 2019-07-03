@@ -167,7 +167,7 @@ class Source(Base):
             env['PATH'] += ':/usr/local/bin'
 
         self._proc = subprocess.Popen(
-            [self._tern_command, '--persistent'],
+            [self._tern_command, '--persistent', '--no-port-file'],
             cwd=self._project_directory,
             shell=is_window,
             env=env,
