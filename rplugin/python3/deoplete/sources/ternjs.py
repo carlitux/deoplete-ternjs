@@ -15,7 +15,7 @@ from deoplete.source.base import Base
 
 
 is_window = platform.system() == 'Windows'
-import_re = r'require\(\s*["\'][@\w\./-]*$|from\s+["\'][@\w\./-]*$'
+import_re = r'require\(\s*["\'][@\w\./-]*$|from\s+["\'][@\w\./\-]*$'
 import_pattern = re.compile(import_re)
 opener = request.build_opener(request.ProxyHandler({}))
 
@@ -27,7 +27,7 @@ class Source(Base):
 
         self.name = 'tern'
         self.mark = '[TernJS]'
-        self.input_pattern = (r'\w+|[\.\{@\'"]\s*\w*')
+        self.input_pattern = (r'\w+|[\.\{@\'"]\s*[-/]?\w*')
         self.rank = 900
         self.filetypes = ['javascript']
         self.filetypes.extend(vim.vars.get(
@@ -72,6 +72,8 @@ class Source(Base):
         self._do_nothing = False
 
     def get_complete_position(self, context):
+        if import_pattern.search(context['input']):
+            return re.search(r'["\']', context['input']).start()
         m = re.search(r'["\']?\w*$', context['input'])
         return m.start() if m else -1
 
@@ -110,6 +112,7 @@ class Source(Base):
                     # quote
                     m = import_pattern.search(context['input'])
                     if m:
+                        # self.vim.err_write('update pos' + str(m) + '\n')
                         pos['ch'] = m.end()
 
                     startThread = threading.Thread(
