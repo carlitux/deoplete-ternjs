@@ -29,6 +29,7 @@ class Source(Base):
         self.mark = '[TernJS]'
         self.input_pattern = (r'\w+|[\.\{@\'"]\s*[-/]?\w*')
         self.rank = 900
+        self.is_volatile = True
         self.filetypes = ['javascript']
         self.filetypes.extend(vim.vars.get(
             'deoplete#sources#ternjs#filetypes', []))
@@ -70,6 +71,7 @@ class Source(Base):
 
         # If something was wrong this source will do nothing: Eg. Tern crashed or not installed.
         self._do_nothing = False
+        self.candidates = None
 
     def get_complete_position(self, context):
         if import_pattern.search(context['input']):
@@ -78,22 +80,18 @@ class Source(Base):
         return m.start() if m else -1
 
     def gather_candidates(self, context):
-        if not self._do_nothing:
+        if not self._do_nothing and context['is_refresh']:
             if not self._is_server_started:
-                # self.debug('gather_candidates: Server is not started, starting')
-                startThread = threading.Thread(
-                    target=self.initialize, name='Start Tern Server')
+                startThread = threading.Thread(target=self.initialize, name='Start Tern Server')
                 startThread.start()
                 startThread.join()
                 self._is_server_started = True # also if any error no need another thread
             elif self._port:
-                if context['is_async']:
-                    if self.candidates is not None:
-                        context['is_async'] = False
-                        return self.candidates
-                else:
+                if self.candidates is not None:
+                    candidates = self.candidates
                     self.candidates = None
-                    context['is_async'] = True
+                    return candidates
+                else:
                     line = context['position'][1]
                     col = context['complete_position']
                     pos = {'line': line - 1, 'ch': col}
@@ -119,13 +117,6 @@ class Source(Base):
                         target=self.completation, name='Request Completion', args=(pos,))
                     startThread.start()
                     startThread.join()
-
-            # This ensure that async request will work
-            return []
-        else:
-            # clean any async call
-            context['is_async'] = False
-            return []
 
     def initialize(self):
         self._project_directory = self._search_tern_project_dir()
@@ -343,6 +334,7 @@ class Source(Base):
                 completions.append(item)
 
         self.candidates = completions
+        self.vim.command('call deoplete#auto_complete()')
 
     def type_doc(self, rec):
         kind = self.get_kind(rec)
