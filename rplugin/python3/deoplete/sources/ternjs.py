@@ -31,8 +31,8 @@ class Source(Base):
         self.rank = 900
         self.is_volatile = True
         self.filetypes = ['javascript']
-        self.filetypes.extend(vim.vars.get(
-            'deoplete#sources#ternjs#filetypes', []))
+        if 'deoplete#sources#ternjs#filetypes' in vim.vars:
+            self.filetypes.extend(vim.vars['deoplete#sources#ternjs#filetypes'])
 
     def on_init(self, context):
         vars = context['vars']
@@ -367,3 +367,4 @@ class Source(Base):
             return 'object'
 
         return kind
+
