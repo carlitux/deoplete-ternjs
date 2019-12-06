@@ -325,8 +325,8 @@ class Source(Base):
                 else:
                     item['kind'] = self.get_kind(rec)
                     item['word'] = rec['name']
-                    item['abbr'] = '{}{}'.format(rec['name'], self.get_signature(rec))
-                    # item['menu'] = 'menu'
+                    item['abbr'] = rec['name']
+                    # item['abbr'] = '{}{}'.format(rec['name'], self.get_signature(rec))
 
                     if self._tern_docs:
                         item['info'] = self.type_doc(rec)
