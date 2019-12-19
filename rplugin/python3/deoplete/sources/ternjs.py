@@ -39,24 +39,23 @@ class Source(Base):
 
         self._localhost = (is_window and '127.0.0.1') or 'localhost'
 
-        self._tern_command = vars.get(
-            'deoplete#sources#ternjs#tern_bin', 'tern')
-        self._tern_types = bool(vars.get('deoplete#sources#ternjs#types', 0))
-        self._tern_depths = bool(vars.get('deoplete#sources#ternjs#depths', 0))
-        self._tern_docs = bool(vars.get('deoplete#sources#ternjs#docs', 0))
-        self._tern_filter = bool(vars.get('deoplete#sources#ternjs#filter', 1))
+        self._tern_command = self.get_from_vars(vars, 'deoplete#sources#ternjs#tern_bin', 'tern')
+        self._tern_types = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#types', 0))
+        self._tern_depths = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#depths', 0))
+        self._tern_docs = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#docs', 0))
+        self._tern_filter = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#filter', 1))
         self._tern_case_insensitive = \
-            bool(vars.get('deoplete#sources#ternjs#case_insensitive', 0))
-        self._tern_guess = bool(vars.get('deoplete#sources#ternjs#guess', 1))
-        self._tern_sort = bool(vars.get('deoplete#sources#ternjs#sort', 1))
+            bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#case_insensitive', 0))
+        self._tern_guess = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#guess', 1))
+        self._tern_sort = bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#sort', 1))
         self._tern_expand_word_forward = \
-            bool(vars.get('deoplete#sources#ternjs#expand_word_forward', 1))
+            bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#expand_word_forward', 1))
         self._tern_omit_object_prototype = \
-            bool(vars.get('deoplete#sources#ternjs#omit_object_prototype', 1))
+            bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#omit_object_prototype', 1))
         self._tern_include_keywords = \
-            bool(vars.get('deoplete#sources#ternjs#include_keywords', 0))
+            bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#include_keywords', 0))
         self._tern_in_literal = \
-            bool(vars.get('deoplete#sources#ternjs#in_literal', 1))
+            bool(self.get_from_vars(vars, 'deoplete#sources#ternjs#in_literal', 1))
 
         # Call to vim/nvim on init to do async the source
         self._vim_current_path = self.vim.eval("expand('%:p:h')")
@@ -367,4 +366,7 @@ class Source(Base):
             return 'object'
 
         return kind
+
+    def get_from_vars(self, vars, key, default):
+        return vars[key] if key in vars else default
 
